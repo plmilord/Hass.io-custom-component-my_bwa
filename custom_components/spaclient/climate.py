@@ -74,12 +74,16 @@ class SpaTemp(ClimateEntity):
     @property
     def min_temp(self):
         """Return the maximum temperature."""
-        return convert_temperature(80, TEMP_FAHRENHEIT, self.temperature_unit)
+        if self._spa.get_temp_range() == "High":
+            return convert_temperature(80, TEMP_FAHRENHEIT, self.temperature_unit)
+        return convert_temperature(50, TEMP_FAHRENHEIT, self.temperature_unit)
 
     @property
     def max_temp(self):
         """Return the maximum temperature."""
-        return convert_temperature(104, TEMP_FAHRENHEIT, self.temperature_unit)
+        if self._spa.get_temp_range() == "High":
+            return convert_temperature(104, TEMP_FAHRENHEIT, self.temperature_unit)
+        return convert_temperature(80, TEMP_FAHRENHEIT, self.temperature_unit)
 
     @property
     def temperature_unit(self):

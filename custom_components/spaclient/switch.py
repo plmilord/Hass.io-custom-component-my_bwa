@@ -5,6 +5,10 @@ from custom_components import spaclient
 from homeassistant.components.switch import SwitchEntity
 from datetime import timedelta
 
+from .const import (
+    ICONS,
+)
+
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = spaclient.INTERVAL
 
@@ -25,11 +29,17 @@ class SpaPump(SwitchEntity):
         """Initialise the device."""
         self._spa = data.spa
         self._pump_num = pump_num
+        self._icon = ICONS.get('Spa Pump ' + str(self._pump_num))
 
     @property
     def name(self):
         """Return the name of the device."""
         return 'Spa Pump ' + str(self._pump_num)
+
+    @property
+    def icon(self):
+        """Return the icon of the device."""
+        return self._icon
 
     @property
     def device_state_attributes(self):
@@ -78,11 +88,17 @@ class HeatMode(SwitchEntity):
     def __init__(self, data):
         """Initialise the switch."""
         self._spa = data.spa
+        self._icon = ICONS.get('Heat Mode')
 
     @property
     def name(self):
         """Return the name of the device."""
         return 'Heat Mode'
+
+    @property
+    def icon(self):
+        """Return the icon of the device."""
+        return self._icon
 
     @property
     def is_on(self):
@@ -110,11 +126,17 @@ class TempRange(SwitchEntity):
     def __init__(self, data):
         """Initialise the switch."""
         self._spa = data.spa
+        self._icon = ICONS.get('Temperature Range')
 
     @property
     def name(self):
         """Return the name of the device."""
         return 'Temperature Range'
+
+    @property
+    def icon(self):
+        """Return the icon of the device."""
+        return self._icon
 
     @property
     def is_on(self):
