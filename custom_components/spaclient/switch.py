@@ -45,16 +45,7 @@ class SpaPump(SwitchEntity):
     def device_state_attributes(self):
         """Return the state attributes of the device."""
         attrs = {}
-
-        attrs["Current Temp"] = self._spa.get_current_temp()
-        attrs["Time"] = self._spa.get_current_time()
-        attrs["Set Temp"] = self._spa.get_set_temp()
-        attrs["Pump 1"] = self._spa.get_pump(1)
-        attrs["Pump 2"] = self._spa.get_pump(2)
-        attrs["Pump 3"] = self._spa.get_pump(3)
-        attrs["Temperature Range"] = self._spa.get_temp_range()
-        attrs["Heat Mode"] = self._spa.get_heat_mode()
-
+        attrs['Spa Pump ' + str(self._pump_num)] = self._spa.get_pump(self._pump_num)
         return attrs
 
     @property
@@ -101,6 +92,13 @@ class HeatMode(SwitchEntity):
         return self._icon
 
     @property
+    def device_state_attributes(self):
+        """Return the state attributes of the device."""
+        attrs = {}
+        attrs["Heat Mode"] = self._spa.get_heat_mode()
+        return attrs
+
+    @property
     def is_on(self):
         """Get whether the switch is in on state."""
         return self._spa.get_heat_mode() != "Rest"
@@ -137,6 +135,13 @@ class TempRange(SwitchEntity):
     def icon(self):
         """Return the icon of the device."""
         return self._icon
+
+    @property
+    def device_state_attributes(self):
+        """Return the state attributes of the device."""
+        attrs = {}
+        attrs["Temperature Range"] = self._spa.get_temp_range()
+        return attrs
 
     @property
     def is_on(self):
