@@ -13,6 +13,7 @@
 ```
 custom_components/spaclient/__init__.py
 custom_components/spaclient/climate.py
+custom_components/spaclient/const.py
 custom_components/spaclient/light.py
 custom_components/spaclient/manifest.json
 custom_components/spaclient/spaclient.py
@@ -37,8 +38,9 @@ The ```crc8``` module is automatically installed when first used of this custom 
 
 ## TODOs
 
-- Ajust climate limits on "Temperature Range" changes (Low vs High)
-- Add a ```const.py``` file (to centralize global variables; icons; etc.)
+- Add sensors ("Time", "Pump 1", "Pump 2", "Pump 3", "Temperature Range", "Heat Mode")
+- Pursue efforts on ```const.py``` file (to centralize global variables; icons; etc.)
+- Create a custom component icon and logo
 - Add an automatic time synchronization function
 - Add the programming capacity of the filtering cycles
 - Bring more information to the user in case of connect/receive/send issues
