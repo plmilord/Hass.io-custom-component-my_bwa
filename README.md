@@ -40,6 +40,7 @@ The ```crc8``` module is automatically installed when first used of this custom 
 
 - Add sensors ("Time", "Pump 1", "Pump 2", "Pump 3", "Temperature Range", "Heat Mode")
 - Pursue efforts on ```const.py``` file (to centralize global variables; icons; etc.)
+- Add a routine to keep alive the communication channel with the bwa module (fictiv toggle every x min.)
 - Create a custom component icon and logo
 - Add an automatic time synchronization function
 - Add the programming capacity of the filtering cycles
