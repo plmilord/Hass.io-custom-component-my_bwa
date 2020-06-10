@@ -1,12 +1,13 @@
-import logging
 import crc8
+import logging
+import schedule
 import socket
-import time
 
 # Import the device class from the component that you want to support
 from threading import Lock
 from homeassistant.const import TEMP_CELSIUS, TEMP_FAHRENHEIT
 from homeassistant.util.temperature import convert as convert_temperature
+import homeassistant.util.dt as dt_util
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,7 +29,10 @@ class spaclient:
         self.time_scale = "12 Hr"
         self.heating = False
         self.circ_pump = False
-        time.sleep(2)
+
+        schedule.every().minute.at(':05').do(self.send_config_request)
+        schedule.every().hour.at(':05').do(self.set_current_time)
+
         self.read_all_msg()
 
     s = None
@@ -141,23 +145,28 @@ class spaclient:
         try:
             len_chunk = spaclient.s.recv(2)
         except IOError as e:
+            #_LOGGER.info("1. False - e.errno = %s", e.errno) #Validation point
             if e.errno != 11:
                 spaclient.s = spaclient.reconnect_socket()
             spaclient.l.release()
             return False
 
         if len_chunk == b'' or len(len_chunk) == 0:
+            #_LOGGER.info("2. False - len_chunk = %s ; len(len_chunk) = %s", len_chunk, len(len_chunk)) #Validation point
+            spaclient.l.release() #Addition...
             return False
 
         length = len_chunk[1]
 
         if int(length) == 0:
+            #_LOGGER.info("3. False - int(length) = 0") #Validation point
             spaclient.l.release()
             return False
 
         try:
             chunk = spaclient.s.recv(length)
         except IOError as e:
+            #_LOGGER.info("4. False - e.errno = %s", e.errno) #Validation point
             if e.errno != 11:
                 spaclient.s = spaclient.reconnect_socket()
             spaclient.l.release()
@@ -166,15 +175,18 @@ class spaclient:
         spaclient.l.release()
 
         if chunk[0:3] == b'\xff\xaf\x13':
+            #_LOGGER.info("5. True - chunk[:] = %s", chunk[:]) #Validation point
             self.handle_status_update(chunk[3:])
 
         return True
 
     def read_all_msg(self):
+        schedule.run_pending()
         while (self.read_msg()):
             True
 
     def send_message(self, type, payload):
+        #_LOGGER.info("payload = %s", payload) #Validation point
         length = 5 + len(payload)
         checksum = self.compute_checksum(bytes([length]), type + payload)
         prefix = b'\x7e'
@@ -198,6 +210,11 @@ class spaclient:
         if self.temp_scale == "Celsius":
             temp = convert_temperature(temp, TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2
         self.send_message(b'\x0a\xbf\x20', bytes([int(temp)]))
+
+    def set_current_time(self):
+        now = dt_util.utcnow()
+        now = dt_util.as_local(now)
+        self.send_message(b'\x0a\xbf\x21', bytes([now.hour]) + bytes([now.minute]))
 
     def set_light(self, value):
         if self.light == value:

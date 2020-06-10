@@ -3,5 +3,5 @@
   "name": "Spa Client",
   "documentation": "https://github.com/plmilord/Hass.io-custom-component-spaclient/blob/master/README.md",
   "codeowners": ["jmoor3", "plmilord"],
-  "requirements": ["crc8==0.0.5"]
+  "requirements": ["crc8==0.0.5", "schedule==0.6.0"]
 }
