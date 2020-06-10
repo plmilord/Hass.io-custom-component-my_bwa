@@ -28,20 +28,18 @@ spaclient:
      scan_interval: 1      # Poll the devices every x seconds (default = 1), Optional
 ```     
 
-3-Restart your Hass.io. Wait few minutes (10-20 min.)... While the system installing the ```crc8``` module!
+3-Restart your Hass.io. Wait few minutes (10-20 min.)... While the system installing the ```crc8``` and ```schedule``` modules!
 
 4-Restart your Hass.io. Enjoy!
 
-## Needed python module
+## Needed python modules
 
-The ```crc8``` module is automatically installed when first used of this custom component on Hass.io.
+The ```crc8``` and ```schedule``` modules are automatically installed when first used of this custom component on Hass.io.
 
 ## TODOs
 
 - Add sensors ("Time", "Pump 1", "Pump 2", "Pump 3", "Temperature Range", "Heat Mode")
 - Pursue efforts on ```const.py``` file (to centralize global variables; icons; etc.)
-- Add a routine to keep alive the communication channel with the bwa module (fictiv toggle every x min.)
 - Create a custom component icon and logo
-- Add an automatic time synchronization function
 - Add the programming capacity of the filtering cycles
 - Bring more information to the user in case of connect/receive/send issues
