@@ -187,7 +187,7 @@ class spaclient:
             True
 
     def send_message(self, type, payload):
-        _LOGGER.info("payload = %s", payload) #Validation point
+        #_LOGGER.info("payload = %s", payload) #Validation point
         length = 5 + len(payload)
         checksum = self.compute_checksum(bytes([length]), type + payload)
         prefix = b'\x7e'
