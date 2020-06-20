@@ -26,7 +26,7 @@ class spaclient:
         self.pump3 = "Off"
         self.set_temp = 100
         self.priming = False
-        self.time_scale = "12 Hr"
+        self.time_scale = "24 Hr"
         self.heating = False
         self.circ_pump = False
 
@@ -61,7 +61,7 @@ class spaclient:
 
     def handle_status_update(self, byte_array):
         self.priming = byte_array[1] & 0x01 == 1
-        self.current_temp = byte_array[2]
+        self.current_temp = byte_array[2] if (byte_array[2] != 255) else None
         self.hour = byte_array[3]
         self.minute = byte_array[4]
         self.heat_mode = ("Ready", "Rest", "Ready in Rest")[byte_array[5]]
@@ -79,8 +79,9 @@ class spaclient:
         self.light = byte_array[14] & 0x03 == 0x03
         self.set_temp = byte_array[20]
         if self.temp_scale == "Celsius":
-            self.current_temp = convert_temperature(self.current_temp / 2, TEMP_CELSIUS, TEMP_FAHRENHEIT)
             self.set_temp = convert_temperature(self.set_temp / 2, TEMP_CELSIUS, TEMP_FAHRENHEIT)
+            if self.current_temp != None:
+                self.current_temp = convert_temperature(self.current_temp / 2, TEMP_CELSIUS, TEMP_FAHRENHEIT)
 
     def get_set_temp(self):
         return self.set_temp
@@ -186,7 +187,7 @@ class spaclient:
             True
 
     def send_message(self, type, payload):
-        #_LOGGER.info("payload = %s", payload) #Validation point
+        _LOGGER.info("payload = %s", payload) #Validation point
         length = 5 + len(payload)
         checksum = self.compute_checksum(bytes([length]), type + payload)
         prefix = b'\x7e'
@@ -214,7 +215,10 @@ class spaclient:
     def set_current_time(self):
         now = dt_util.utcnow()
         now = dt_util.as_local(now)
-        self.send_message(b'\x0a\xbf\x21', bytes([now.hour]) + bytes([now.minute]))
+        if self.time_scale == "24 Hr":
+            self.send_message(b'\x0a\xbf\x21', bytes([128 + now.hour]) + bytes([now.minute]))
+        else:
+            self.send_message(b'\x0a\xbf\x21', bytes([now.hour]) + bytes([now.minute]))
 
     def set_light(self, value):
         if self.light == value:
