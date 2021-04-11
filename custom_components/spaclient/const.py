@@ -10,9 +10,10 @@ SPACLIENT_COMPONENTS = [
     "switch",
 ]
 ICONS = {
+    "Heat Mode": "mdi:alpha-r",
     "Spa Pump 1": "mdi:fan",
     "Spa Pump 2": "mdi:fan",
     "Spa Pump 3": "mdi:fan",
-    "Heat Mode": "mdi:alpha-r",
+    "Spa Temperature": "mdi:hot-tub",
     "Temperature Range": "mdi:thermometer-lines",
 }
