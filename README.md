@@ -6,7 +6,7 @@
 
 <p align="center">
 # Home Assistant custom component - Spa Client
-</span>
+</p>
 
 # What you need
 
