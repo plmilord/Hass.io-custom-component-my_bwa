@@ -4,9 +4,11 @@
 
 </p>
 
-<p align="center">
+<span align="center">
+
 # Home Assistant custom component - Spa Client
-</p>
+
+</span>
 
 # What you need
 
