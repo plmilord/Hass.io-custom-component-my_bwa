@@ -18,7 +18,7 @@
 
 ## Custom component setup
 
-1-Copy these project files into your Home Assistant ```/confi/custom_components``` directory.
+1-Copy these project files into your Home Assistant ```/config/custom_components``` directory.
 
 2-Install **Spa Client** integration through the Home Assistant integrations menu (you may need to press F5 in your browser to refresh Home Assistant cache files so that it appears in the menu of available integrations).
 
