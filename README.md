@@ -10,13 +10,13 @@
 
 </span>
 
-# What you need
+## What you need
 
 - A Hot Tub Equipped with a Balboa BP System
 - bwa™ Wi-Fi Module (50350)
 - Reference : http://www.balboawatergroup.com/bwa
 
-# Custom component setup
+## Custom component setup
 
 1-Copy these project files into your Home Assistant ```/confi/custom_components``` directory.
 
@@ -24,15 +24,16 @@
 
 3-Enjoy!
 
-# Preview
+## Preview
 
 <p align="center">
 <a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/preview.png"></a>
-
+</p>
+<p align="center">
 <a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/options.png"></a>
 </p>
 
-# Task List
+## Task List
 
 - [x] Create an icon and logo for this custom component
 - [x] Allow the installation of this custom component through the Home Assistant integrations menu (use of config_flow.py)
@@ -44,7 +45,7 @@
 - [ ] Manage the availability of entities while not connected
 - [ ] Implement the other spa messages (fault log, gfi test, etc.)
 
-# Inspiration / Credits
+## Inspiration / Credits
 
 - https://github.com/jmoor3/homeassistant-components | Forked project, initial inspiration!
 - https://github.com/ccutrer/balboa_worldwide_app/wiki | Detailed Wiki on bwa protocol.
