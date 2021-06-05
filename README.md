@@ -1,6 +1,6 @@
 <p align="center">
 
-<img src="https://github.com/plmilord/Hass.io-custom-component-spaclient/master/images/icon.png" width="150">
+<img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/icon.png" width="150">
 
 </p>
 
@@ -25,9 +25,9 @@
 # Preview
 
 <p align="center">
-<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://github.com/plmilord/Hass.io-custom-component-spaclient/master/images/preview.png"></a>
+<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/preview.png"></a>
 
-<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://github.com/plmilord/Hass.io-custom-component-spaclient/master/images/options.png"></a>
+<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/options.png"></a>
 </p>
 
 # Task List
