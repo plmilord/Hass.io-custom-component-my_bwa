@@ -1,8 +1,6 @@
-<p align="center">
-<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/icon.png" width="150"></a>
-</p>
-
 <span align="center">
+
+<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/icon.png" width="150"></a>
 
 # Home Assistant custom component - Spa Client
 
@@ -24,12 +22,13 @@
 
 ## Preview
 
-<p align="center">
-<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/preview.png"></a>
-</p>
-<p align="center">
-<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/options.png"></a>
-</p>
+<span align="center">
+
+<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/preview.png" width="500"></a>
+
+<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/options.png" width="400"></a>
+
+</span>
 
 ## Task List
 
