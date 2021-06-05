@@ -1,13 +1,9 @@
 <p align="center">
-
-<img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/icon.png" width="150">
-
+<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://raw.githubusercontent.com/plmilord/Hass.io-custom-component-spaclient/master/images/icon.png" width="150"></a>
 </p>
 
 <span align="center">
-
 # Home Assistant custom component - Spa Client
-
 </span>
 
 ## What you need
