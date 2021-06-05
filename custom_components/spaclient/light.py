@@ -1,49 +1,59 @@
-import logging
-
+"""Support for Spa Client lights."""
 # Import the device class from the component that you want to support
-from custom_components import spaclient
+from . import SpaClientDevice
+from .const import _LOGGER, DOMAIN, SPA
 from homeassistant.components.light import LightEntity
+
 from datetime import timedelta
-
-_LOGGER = logging.getLogger(__name__)
-SCAN_INTERVAL = spaclient.INTERVAL
+SCAN_INTERVAL = timedelta(seconds=1)
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Setup the sensor platform."""
-    spa_data = spaclient.NETWORK
-    async_add_entities([SpaLight(spa_data)])
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Setup the Spa Client lights."""
+
+    spaclient = hass.data[DOMAIN][config_entry.entry_id][SPA]
+    entities = []
+
+    light_array = spaclient.get_light_list()
+
+    for i in range(0, 2):
+        if light_array[i] != 0:
+            entities.append(SpaLight(i + 1, spaclient, config_entry))
+
+    async_add_entities(entities, True)
 
 
-class SpaLight(LightEntity):
-    """Representation of a Spa light."""
+class SpaLight(SpaClientDevice, LightEntity):
+    """Representation of a light."""
 
-    def __init__(self, data):
+    def __init__(self, light_num, spaclient, config_entry):
         """Initialize the device."""
-        self._spa = data.spa
+        super().__init__(spaclient, config_entry)
+        self._light_num = light_num
+        self._spaclient = spaclient
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID."""
+        return 'Light ' + str(self._light_num)
 
     @property
     def name(self):
         """Return the name of the device."""
-        return 'Spa Light'
+        return 'Light ' + str(self._light_num)
 
     @property
     def is_on(self):
         """Return true if light is on."""
-        return self._spa.get_light()
+        #_LOGGER.info("Update Light %s state", self._light_num)
+        return self._spaclient.get_light(self._light_num)
 
     async def async_turn_on(self, **kwargs):
         """Instruct the light to turn on."""
-        _LOGGER.info("Turning on Spa Light")
-        self._spa.set_light(True)
-        _LOGGER.info("Spa Light status %s", self._spa.get_light())
+        #_LOGGER.info("Turning On Light %s", self._light_num)
+        self._spaclient.set_light(self._light_num, True)
 
     async def async_turn_off(self, **kwargs):
         """Instruct the light to turn off."""
-        _LOGGER.info("Turning off Spa Light")
-        self._spa.set_light(False)
-        _LOGGER.info("Spa Light status %s", self._spa.get_light())
-
-    async def async_update(self):
-        """Fetch new state data for the sensor."""
-        self._spa.read_all_msg()
+        #_LOGGER.info("Turning Off Light %s", self._light_num)
+        self._spaclient.set_light(self._light_num, False)

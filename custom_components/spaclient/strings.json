@@ -1,0 +1,21 @@
+{
+  "config": {
+    "title": "Spa Client",
+    "step": {
+      "user": {
+        "title": "Connect to the bwa Wi-Fi Module",
+        "data": {
+          "host": "Host",
+	  "name": "Name"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect, please try again",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
+    }
+  }
+}

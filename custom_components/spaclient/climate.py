@@ -1,43 +1,54 @@
-import logging
-
+"""Support for Spa Client climate device."""
 # Import the device class from the component that you want to support
-from custom_components import spaclient
+from . import SpaClientDevice
+from .const import _LOGGER, DOMAIN, ICONS, SPA
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE, HVAC_MODE_HEAT, HVAC_MODE_OFF)
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_FAHRENHEIT
 from homeassistant.util.temperature import convert as convert_temperature
-from datetime import timedelta
 
-_LOGGER = logging.getLogger(__name__)
-SCAN_INTERVAL = spaclient.INTERVAL
+from datetime import timedelta
+SCAN_INTERVAL = timedelta(seconds=1)
 
 SUPPORT_HVAC = [HVAC_MODE_HEAT, HVAC_MODE_OFF]
 SUPPORT_FLAGS = (SUPPORT_TARGET_TEMPERATURE)
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Setup the sensor platform."""
-    spa_data = spaclient.NETWORK
-    async_add_entities([SpaTemp(spa_data)])
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Setup the Spa Client climate device."""
+
+    spaclient = hass.data[DOMAIN][config_entry.entry_id][SPA]
+    entities = []
+
+    entities.append(SpaThermostat(spaclient, config_entry))
+
+    async_add_entities(entities, True)
 
 
-class SpaTemp(ClimateEntity):
-    """Representation of a Spa climate."""
+class SpaThermostat(SpaClientDevice, ClimateEntity):
+    """Representation of a climate device."""
 
-    def __init__(self, data):
+    def __init__(self, spaclient, config_entry):
         """Initialize the device."""
-        self._spa = data.spa
+        super().__init__(spaclient, config_entry)
+        self._spaclient = spaclient
+        self._icon = ICONS.get('Spa Thermostat')
 
     @property
     def name(self):
         """Return the name of the device."""
-        return 'Spa Temperature'
+        return 'Spa Thermostat'
+
+    @property
+    def icon(self):
+        """Return the icon of the device."""
+        return self._icon
 
     @property
     def hvac_mode(self):
         """Return current HVAC mode."""
-        if self._spa.get_heating():
+        if self._spaclient.get_heating():
             return HVAC_MODE_HEAT
         return HVAC_MODE_OFF
 
@@ -53,54 +64,38 @@ class SpaTemp(ClimateEntity):
 
     @property
     def current_temperature(self):
-        """Return true if light is on."""
-        return self._spa.get_current_temp()
+        """Return the current temperature."""
+        return self._spaclient.get_current_temp()
 
     @property
     def target_temperature(self):
-        return self._spa.get_set_temp()
+        return self._spaclient.get_set_temp()
 
     async def async_set_temperature(self, **kwargs):
-        _LOGGER.info("Setting Temperature")
-        self._spa.send_config_request()
-        self._spa.set_temperature(kwargs.get(ATTR_TEMPERATURE))
+        #_LOGGER.info("Setting Temperature")
+        self._spaclient.set_temperature(kwargs.get(ATTR_TEMPERATURE))
 
     async def async_set_hvac_mode(self, hvac_mode):
-        """Set new target hvac mode."""
-        if self._spa.get_heating():
+        """Set new target HVAC mode."""
+        if self._spaclient.get_heating():
             return HVAC_MODE_HEAT
         return HVAC_MODE_OFF
 
     @property
     def min_temp(self):
-        """Return the maximum temperature."""
-        if self._spa.get_temp_range() == "High":
-            return convert_temperature(80, TEMP_FAHRENHEIT, self.temperature_unit)
-        return convert_temperature(50, TEMP_FAHRENHEIT, self.temperature_unit)
+        """Return the minimum temperature."""
+        if self._spaclient.get_temp_range() == "High":
+            return convert_temperature(self._spaclient.get_high_range_min(), TEMP_FAHRENHEIT, self.temperature_unit)
+        return convert_temperature(self._spaclient.get_low_range_min(), TEMP_FAHRENHEIT, self.temperature_unit)
 
     @property
     def max_temp(self):
         """Return the maximum temperature."""
-        if self._spa.get_temp_range() == "High":
-            return convert_temperature(104, TEMP_FAHRENHEIT, self.temperature_unit)
-        return convert_temperature(80, TEMP_FAHRENHEIT, self.temperature_unit)
+        if self._spaclient.get_temp_range() == "High":
+            return convert_temperature(self._spaclient.get_high_range_max(), TEMP_FAHRENHEIT, self.temperature_unit)
+        return convert_temperature(self._spaclient.get_low_range_max(), TEMP_FAHRENHEIT, self.temperature_unit)
 
     @property
     def temperature_unit(self):
         """Return the unit of measurement used by the platform."""
         return TEMP_FAHRENHEIT
-
-    @property
-    def current_operation(self):
-        """Return current operation ie. heat, cool, idle."""
-        return "Set Temperature"
-
-    async def async_update(self):
-        """Fetch new state data for the sensor."""
-        self._spa.read_all_msg()
-
-    async def async_turn_off(self):
-        pass
-
-    async def async_turn_on(self):
-        pass

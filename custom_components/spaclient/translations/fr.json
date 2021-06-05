@@ -1,0 +1,31 @@
+{
+    "config": {
+        "abort": {
+            "already_configured": "Le p\u00e9riph\u00e9rique est d\u00e9j\u00e0 configur\u00e9"
+        },
+        "error": {
+            "cannot_connect": "Impossible de se connecter, veuillez r\u00e9essayer",
+            "unknown": "Erreur inattendue"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "host": "Nom de l'h\u00f4te ou adresse IP",
+                    "name": "Nom"
+                },
+                "title": "Connexion au module Wi-Fi bwa"
+            }
+        },
+        "title": "Spa Client"
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "scan_interval": "Fr\u00e9quence rafra\u00eechissement des entit\u00e9s (secondes)",
+                    "sync_time": "Gardez l'heure de votre contrôleur Balboa BP synchronis\u00e9e avec Home Assistant"
+                }
+            }
+        }
+    }
+}

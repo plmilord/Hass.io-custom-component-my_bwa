@@ -1,53 +1,151 @@
-import logging
+"""The Spa Client integration."""
+import asyncio
 
-import voluptuous as vol
 import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 
 # Import the device class from the component that you want to support
 from .spaclient import spaclient
-from homeassistant.helpers import discovery
-from homeassistant.const import CONF_SCAN_INTERVAL
-from datetime import timedelta
+from homeassistant.config_entries import SOURCE_IMPORT
+from homeassistant.const import (
+    CONF_HOST,
+    CONF_NAME,
+    CONF_SCAN_INTERVAL,
+)
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.entity import Entity
+from .const import (
+    _LOGGER,
+    CONF_SYNC_TIME,
+    DATA_LISTENER,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+    ICONS,
+    MIN_SCAN_INTERVAL,
+    SPA,
+    SPACLIENT_COMPONENTS,
+)
 
-_LOGGER = logging.getLogger(__name__)
 
-DOMAIN = 'spaclient'
-ATTR_HOST_IP = 'spa_ip'
-ATTR_NB_TOGGLE = 'nb_toggle'
+CONFIG_SCHEMA = vol.Schema(
+    {
+        DOMAIN: vol.Schema(
+            {
+                vol.Required(CONF_HOST): cv.string,
+                vol.Required(CONF_NAME): cv.string,
+                vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(cv.positive_int, vol.Clamp(min=MIN_SCAN_INTERVAL)),
+                vol.Optional(CONF_SYNC_TIME, default=False): bool,
+            }
+        )
+    },
+    extra=vol.ALLOW_EXTRA,
+)
 
-CONFIG_SCHEMA = vol.Schema({
-    DOMAIN: vol.Schema({
-        vol.Required(ATTR_HOST_IP): cv.string,
-        vol.Optional(ATTR_NB_TOGGLE, default=1): cv.positive_int,
-        vol.Optional(CONF_SCAN_INTERVAL, default=1): cv.positive_int,
-    })
-}, extra=vol.ALLOW_EXTRA)
 
-def setup(hass, config):
-    """Set up the Spa."""
-    global NETWORK
-    global NB_TOGGLE
-    global INTERVAL
+async def async_setup(hass, base_config):
+    """Configure the Spa Client component using flow only."""
 
-    conf = config[DOMAIN]
-    host_ip = conf[ATTR_HOST_IP]
-    NETWORK = SpaData(host_ip)
-    NB_TOGGLE = conf[ATTR_NB_TOGGLE]
-    INTERVAL = timedelta(seconds=conf[CONF_SCAN_INTERVAL])
+    hass.data.setdefault(DOMAIN, {})
 
-    setup_spa(hass, config)
-
+    if DOMAIN in base_config:
+        for entry in base_config[DOMAIN]:
+            hass.async_create_task(
+                hass.config_entries.flow.async_init(
+                    DOMAIN, context={"source": SOURCE_IMPORT}, data=entry
+                )
+            )
     return True
 
-class SpaData(object):
-    """Get the latest data and update the states."""
-    def __init__(self, host_ip):
-        self.spa = spaclient(spaclient.get_socket(host_ip))
 
-def setup_spa(hass, config):
-    """Set up the Balboa Spa."""
-    conf = config[DOMAIN]
+async def async_setup_entry(hass, config_entry):
+    """Set up Spa Client from a config entry."""
 
-    discovery.load_platform(hass, 'climate', DOMAIN, conf, config)
-    discovery.load_platform(hass, 'light', DOMAIN, conf, config)
-    discovery.load_platform(hass, 'switch', DOMAIN, conf, config)
+    spa = spaclient(config_entry.data[CONF_HOST])
+    hass.data[DOMAIN][config_entry.entry_id] = {SPA: spa, DATA_LISTENER: [config_entry.add_update_listener(update_listener)]}
+
+    connected = await spa.validate_connection()
+    if not connected:
+        _LOGGER.error("Failed to connect to spa at %s", config_entry.data[CONF_HOST])
+        raise ConfigEntryNotReady
+
+    await spa.send_module_identification_request()
+    await spa.send_configuration_request()
+    await spa.send_information_request()
+    await spa.send_additional_information_request()
+    await spa.send_filter_cycles_request()
+
+    hass.loop.create_task(spa.read_all_msg())
+    hass.loop.create_task(spa.keep_alive_call())
+
+    spa.print_variables()
+
+    for component in SPACLIENT_COMPONENTS:
+        hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, component))
+    return True
+
+
+async def async_unload_entry(hass, config_entry) -> bool:
+    """Unload a config entry."""
+    unload_ok = all(
+        await asyncio.gather(
+            *[
+                hass.config_entries.async_forward_entry_unload(config_entry, component)
+                for component in SPACLIENT_COMPONENTS
+            ]
+        )
+    )
+
+    hass.data[DOMAIN][config_entry.entry_id][DATA_LISTENER]:listener()
+
+    if unload_ok:
+        hass.data[DOMAIN].pop(config_entry.entry_id)
+        return True
+
+    return False
+
+
+async def update_listener(hass, config_entry):
+    """Handle options update."""
+    if config_entry.options.get(CONF_SYNC_TIME):
+        spa = hass.data[DOMAIN][config_entry.entry_id][SPA]
+
+        async def sync_time():
+            while config_entry.options.get(CONF_SYNC_TIME):
+                await spa.set_current_time()
+                await asyncio.sleep(86400)
+
+        hass.loop.create_task(sync_time())
+
+
+class SpaClientDevice(Entity):
+    """Representation of a Spa Client device."""
+
+    def __init__(self, spaclient, config_entry):
+        """Initialize the Spa Client device."""
+        self._device_name = config_entry.data[CONF_NAME]
+        self._spaclient = spaclient
+        self._unique_id = "Spa Client"
+
+    async def async_added_to_hass(self):
+        """Register state update callback."""
+
+    @property
+    def should_poll(self) -> bool:
+        """Home Assistant will poll an entity when the should_poll property returns True."""
+        return True
+
+    @property
+    def unique_id(self):
+        """Return a unique ID."""
+        return self._unique_id
+
+    @property
+    def device_info(self):
+        """Return the device information for this entity."""
+        return {
+            "identifiers": {(DOMAIN, self._spaclient.get_macaddr())},
+            "model": self._spaclient.get_model_name(),
+            "manufacturer": "Balboa Water Group",
+            "name": self._device_name,
+            "sw_version": self._spaclient.get_ssid(),
+        }
