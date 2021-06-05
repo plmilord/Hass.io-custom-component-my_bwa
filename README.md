@@ -1,45 +1,51 @@
-# Hass.io custom component - Spa Client
+<p align="center">
 
-## What you need
+<img src="https://github.com/plmilord/Hass.io-custom-component-spaclient/master/images/icon.png" width="150">
+
+</p>
+
+<p align="center">
+# Home Assistant custom component - Spa Client
+</span>
+
+# What you need
 
 - A Hot Tub Equipped with a Balboa BP System
 - bwa™ Wi-Fi Module (50350)
 - Reference : http://www.balboawatergroup.com/bwa
 
-## Custom component setup
+# Custom component setup
 
-1-Copy these project files into your Home Assistant ```/config``` directory.
+1-Copy these project files into your Home Assistant ```/confi/custom_components``` directory.
 
-```
-custom_components/spaclient/__init__.py
-custom_components/spaclient/climate.py
-custom_components/spaclient/const.py
-custom_components/spaclient/light.py
-custom_components/spaclient/manifest.json
-custom_components/spaclient/spaclient.py
-custom_components/spaclient/switch.py
-```
+2-Install **Spa Client** integration through the Home Assistant integrations menu (you may need to press F5 in your browser to refresh Home Assistant cache files so that it appears in the menu of available integrations).
 
-2-Edit congifuration.yaml file entry:
-```
-spaclient:
-     spa_ip: 192.168.2.150 # Spa IP-adress, Required
-     nb_toggle: 1          # 1 or 2 toggle to action the pumps (default = 1), Optional
-     scan_interval: 1      # Poll the devices every x seconds (default = 1), Optional
-```     
+3-Enjoy!
 
-3-Restart your Hass.io. Wait few minutes (10-20 min.)... While the system installing the ```crc8``` and ```schedule``` modules!
+# Preview
 
-4-Restart your Hass.io. Enjoy!
+<p align="center">
+<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://github.com/plmilord/Hass.io-custom-component-spaclient/master/images/preview.png"></a>
 
-## Needed python modules
+<a href="https://github.com/plmilord/Hass.io-custom-component-spaclient"><img src="https://github.com/plmilord/Hass.io-custom-component-spaclient/master/images/options.png"></a>
+</p>
 
-The ```crc8``` and ```schedule``` modules are automatically installed when first used of this custom component on Hass.io.
+# Task List
 
-## TODOs
+- [x] Create an icon and logo for this custom component
+- [x] Allow the installation of this custom component through the Home Assistant integrations menu (use of config_flow.py)
+- [ ] Allow the installation of this custom component through HACS
+- [ ] Bring back the ability to configure this custom component via the entries in configuration.yaml
+- [ ] Add programming capability for filter cycles
+- [ ] Change the way I update entities (from polling mode to subscribing to updates)
+- [ ] Customize entity IDs with **Spa Client** custom name to allow multiple integrations in the same Home Assistant instance
+- [ ] Manage the availability of entities while not connected
+- [ ] Implement the other spa messages (fault log, gfi test, etc.)
 
-- Add sensors ("Time", "Pump 1", "Pump 2", "Pump 3", "Temperature Range", "Heat Mode")
-- Pursue efforts on ```const.py``` file (to centralize global variables; icons; etc.)
-- Create a custom component icon and logo
-- Add the programming capacity of the filtering cycles
-- Bring more information to the user in case of connect/receive/send issues
+# Inspiration / Credits
+
+- https://github.com/jmoor3/homeassistant-components | Forked project, initial inspiration!
+- https://github.com/ccutrer/balboa_worldwide_app/wiki | Detailed Wiki on bwa protocol.
+- https://github.com/garbled1/pybalboa | Main program in Python to interface the bwa module. Source of the CRC function. Very well programmed and documented!
+- https://github.com/garbled1/balboa_homeassistan | Balboa Spa Client integration for Home Assistant which sit on previous ```pybalboa``` main program.
+- https://github.com/vincedarley/homebridge-plugin-bwaspa | Homebridge Balboa Spa Plugin.
