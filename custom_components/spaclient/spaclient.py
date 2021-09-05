@@ -818,8 +818,6 @@ class spaclient:
         if pump_val == value:
             return
         self.send_toggle_message(pump_code)
-        if self.pump_array[pump_num - 1] == 1:
-            self.send_toggle_message(pump_code)
         if pump_num == 1:
             self.pump1 = value
         if pump_num == 2:

@@ -78,15 +78,23 @@ class SpaPump(SpaClientDevice, SwitchEntity):
         """Send the on command."""
         #_LOGGER.info("Pump %s status %s", self._pump_num, self._spaclient.get_pump(self._pump_num))
         #_LOGGER.info("Turning On Pump %s", self._pump_num)
-        self._spaclient.set_pump(self._pump_num, "High")
+        if self._spaclient.pump_array[self._pump_num - 1] == 1:
+            self._spaclient.set_pump(self._pump_num, "High")
+            return
+
+        self._spaclient.set_pump(self._pump_num, "Low")
 
     async def async_turn_off(self, **kwargs):
         """Send the off command."""
         #_LOGGER.info("Pump %s status %s", self._pump_num, self._spaclient.get_pump(self._pump_num))
         #if self._spaclient.get_pump(self._pump_num) == "Low":
-            #_LOGGER.info("Turning On Pump %s", self._pump_num)
+            #_LOGGER.info("Set to High Pump %s", self._pump_num)
         #if self._spaclient.get_pump(self._pump_num) == "High":
             #_LOGGER.info("Turning Off Pump %s", self._pump_num)
+        if self._spaclient.get_pump(self._pump_num) == "Low":
+            self._spaclient.set_pump(self._pump_num, "High")
+            return
+
         self._spaclient.set_pump(self._pump_num, "Off")
 
 
