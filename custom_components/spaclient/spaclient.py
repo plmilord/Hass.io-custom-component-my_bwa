@@ -39,7 +39,7 @@ class spaclient:
         self.pump4 = "Off"
         self.pump5 = "Off"
         self.pump6 = "Off"
-        self.circ_pump = False
+        self.circ_pump = 0
         self.blower = "Off"
         self.light1 = 0
         self.light2 = 0
@@ -227,11 +227,6 @@ class spaclient:
         self.aux1 = flag6 & 0x08
         self.aux2 = flag6 & 0x10
         self.set_temp = byte_array[20]
-
-        if self.temp_scale == "Celsius":
-            self.set_temp = round(convert_temperature(self.set_temp / 2, TEMP_CELSIUS, TEMP_FAHRENHEIT) * 2) / 2
-            if self.current_temp != None:
-                self.current_temp = round(convert_temperature(self.current_temp / 2, TEMP_CELSIUS, TEMP_FAHRENHEIT) * 2) / 2
 
     def parse_filter_cycles_response(self, byte_array):
         """ Parse filter cycles response.
@@ -734,10 +729,9 @@ class spaclient:
     def send_toggle_message(self, item):
         self.send_message(b'\x0a\xbf\x11', bytes([item]) + b'\x00')
 
-    def set_temperature(self, temp):
-        self.set_temp = int(temp)
+    async def set_temperature(self, temp):
         if self.temp_scale == "Celsius":
-            temp = convert_temperature(temp, TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2
+            temp = round(convert_temperature(temp, TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2)
         self.send_message(b'\x0a\xbf\x20', bytes([int(temp)]))
 
     async def set_current_time(self):

@@ -5,7 +5,7 @@ from .const import _LOGGER, DOMAIN, ICONS, SPA
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE, HVAC_MODE_HEAT, HVAC_MODE_OFF)
-from homeassistant.const import ATTR_TEMPERATURE, TEMP_FAHRENHEIT
+from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
 from homeassistant.util.temperature import convert as convert_temperature
 
 from datetime import timedelta
@@ -65,15 +65,32 @@ class SpaThermostat(SpaClientDevice, ClimateEntity):
     @property
     def current_temperature(self):
         """Return the current temperature."""
-        return self._spaclient.get_current_temp()
+        if self._spaclient.get_current_temp() != None:
+            if self.hass.config.units.temperature_unit == TEMP_CELSIUS and self._spaclient.temp_scale == "Fahrenheit":
+                return round(convert_temperature(self._spaclient.get_current_temp(), TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2) / 2
+            if self.hass.config.units.temperature_unit == TEMP_CELSIUS and self._spaclient.temp_scale == "Celsius":
+                return self._spaclient.get_current_temp() / 2
+            if self.hass.config.units.temperature_unit == TEMP_FAHRENHEIT and self._spaclient.temp_scale == "Celsius":
+                return round(convert_temperature(self._spaclient.get_current_temp() / 2, TEMP_CELSIUS, TEMP_FAHRENHEIT) * 2) / 2
+            return self._spaclient.get_current_temp()
+        return None
 
     @property
     def target_temperature(self):
+        """Return the target temperature."""
+        if self.hass.config.units.temperature_unit == TEMP_CELSIUS and self._spaclient.temp_scale == "Fahrenheit":
+            return round(convert_temperature(self._spaclient.get_set_temp(), TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2) / 2
+        if self.hass.config.units.temperature_unit == TEMP_CELSIUS and self._spaclient.temp_scale == "Celsius":
+            return self._spaclient.get_set_temp() / 2
+        if self.hass.config.units.temperature_unit == TEMP_FAHRENHEIT and self._spaclient.temp_scale == "Celsius":
+            return round(convert_temperature(self._spaclient.get_set_temp() / 2, TEMP_CELSIUS, TEMP_FAHRENHEIT) * 2) / 2
         return self._spaclient.get_set_temp()
 
     async def async_set_temperature(self, **kwargs):
-        #_LOGGER.info("Setting Temperature")
-        self._spaclient.set_temperature(kwargs.get(ATTR_TEMPERATURE))
+        temperature = kwargs[ATTR_TEMPERATURE]
+        if self.hass.config.units.temperature_unit == TEMP_CELSIUS:
+            temperature = round(convert_temperature(temperature, TEMP_CELSIUS, TEMP_FAHRENHEIT))
+        await self._spaclient.set_temperature(temperature)
 
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target HVAC mode."""
@@ -98,4 +115,6 @@ class SpaThermostat(SpaClientDevice, ClimateEntity):
     @property
     def temperature_unit(self):
         """Return the unit of measurement used by the platform."""
+        if self.hass.config.units.temperature_unit == TEMP_CELSIUS:
+            return TEMP_CELSIUS
         return TEMP_FAHRENHEIT
