@@ -41,7 +41,7 @@ Entity | Type | Tested | Programmed entity attributes
 Auxiliary 1 | Switch | ? | N/A
 Auxiliary 2 | Switch | ? | N/A
 Blower | Switch | ? | N/A
-Circulation Pump | Binary sensor | ? | N/A
+Circulation Pump | Binary sensor | ✓ | N/A
 Filter Cycle 1 Status | Binary sensor | ✓ | Begins, Runs, Ends
 Filter Cycle 2 | Switch | ✓ | N/A
 Filter Cycle 2 Status | Binary sensor | ✓ | Begins, Runs, Ends
