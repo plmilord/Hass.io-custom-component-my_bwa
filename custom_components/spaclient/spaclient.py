@@ -39,10 +39,10 @@ class spaclient:
         self.pump4 = "Off"
         self.pump5 = "Off"
         self.pump6 = "Off"
-        self.circ_pump = 0
+        self.circ_pump = "Off"
         self.blower = "Off"
-        self.light1 = 0
-        self.light2 = 0
+        self.light1 = False
+        self.light2 = False
         self.mister = "Off"
         self.aux1 = "Off"
         self.aux2 = "Off"
@@ -218,12 +218,12 @@ class spaclient:
         self.pump5 = ("Off", "Low", "High")[byte_array[12] & 0x03]
         self.pump6 = ("Off", "Low", "High")[byte_array[12] >> 6 & 0x03]
         flag5 = byte_array[13]
-        self.circ_pump = flag5 & 0x02
-        self.blower = (flag5 & 0x0c) >> 2
+        self.circ_pump = "Off" if (flag5 & 0x02) == 0 else "On"
+        self.blower =  "Off" if (flag5 & 0x0c) >> 2 == 0 else "On"
         self.light1 = byte_array[14] & 0x03 == 0x03
         self.light2 = byte_array[14] >> 6 & 0x03 == 0x03
         flag6 = byte_array[15]
-        self.mister = flag6 & 0x01
+        self.mister = "Off" if (flag6 & 0x01) == 0 else "On"
         self.aux1 = flag6 & 0x08
         self.aux2 = flag6 & 0x10
         self.set_temp = byte_array[20]

@@ -134,7 +134,7 @@ class Blower(SpaClientDevice, SwitchEntity):
 
     async def async_turn_on(self, **kwargs):
         """Send the on command."""
-        self._spaclient.set_blower("High")
+        self._spaclient.set_blower("On")
         #_LOGGER.info("Blower changed to %s", self._spaclient.get_blower())
 
     async def async_turn_off(self, **kwargs):
