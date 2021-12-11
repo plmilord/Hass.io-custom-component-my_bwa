@@ -40,15 +40,15 @@ Entity | Type | Tested | Programmed entity attributes
 ------ | ---- | ------ | ----------------------------
 Auxiliary 1 | Switch | ? | N/A
 Auxiliary 2 | Switch | ? | N/A
-Blower | Switch | ? | N/A
-Circulation Pump | Binary sensor | ✓ | N/A
+Blower | Switch | ✓ | Off, On
+Circulation Pump | Binary sensor | ✓ | Off, On
 Filter Cycle 1 Status | Binary sensor | ✓ | Begins, Runs, Ends
-Filter Cycle 2 | Switch | ✓ | N/A
+Filter Cycle 2 | Switch | ✓ | 0, 1
 Filter Cycle 2 Status | Binary sensor | ✓ | Begins, Runs, Ends
 Heat Mode | Switch | ✓ | Ready, Rest, Ready in Rest
-Light 1 | Light | ✓ | N/A
-Light 2 | Light | ? | N/A
-Mister | Switch | ? | N/A
+Light 1 | Light | ✓ | False, True
+Light 2 | Light | ? | False, True
+Mister | Switch | ? | Off, On
 Pump 1 | Switch | ✓ | Off, Low, High
 Pump 2 | Switch | ✓ | Off, Low, High
 Pump 3 | Switch | ✓ | Off, Low, High
@@ -57,14 +57,14 @@ Pump 5 | Switch | ? | Off, Low, High
 Pump 6 | Switch | ? | Off, Low, High
 Spa Thermostat | Climate | ✓ | N/A
 Temperature Range | Switch | ✓ | Low, High
-bwa Wi-Fi Module | Binary sensor | ✓ | N/A
+bwa Wi-Fi Module | Binary sensor | ✓ | False, True
 
 Option | Tested
 ------ | ------
 Entities polling rate (seconds) | Not yet implemented!
 Time sync with Home Assistant | ✓
 
-✓ = Tested and working properly (represents my spa options)  
+✓ = Tested and working properly  
 ? = Need your help to validate if this working properly (I don't have these options on my spa)
 
 ## Task List
@@ -73,6 +73,7 @@ Time sync with Home Assistant | ✓
 - [x] Allow the installation of this custom component through the Home Assistant integrations menu (use of config_flow.py)
 - [ ] Allow the installation of this custom component through HACS
 - [ ] Bring back the ability to configure this custom component via the entries in configuration.yaml
+- [ ] Investigate why it takes so long to load the component on an RPi (~2s on docker; ~85s on RPi3)
 - [ ] Add programming capability for filter cycles
 - [ ] Change the way I update entities (from polling mode to subscribing to updates)
 - [ ] Customize entity IDs with **Spa Client** custom name to allow multiple integrations in the same Home Assistant instance
