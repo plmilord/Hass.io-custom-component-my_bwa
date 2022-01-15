@@ -79,10 +79,10 @@ async def async_setup_entry(hass, config_entry):
     hass.loop.create_task(spa.read_all_msg())
     hass.loop.create_task(spa.keep_alive_call())
 
-    spa.print_variables()
-
     for component in SPACLIENT_COMPONENTS:
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, component))
+
+    spa.print_variables()
     return True
 
 

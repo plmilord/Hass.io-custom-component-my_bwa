@@ -73,7 +73,7 @@ Time sync with Home Assistant | ✓
 - [x] Allow the installation of this custom component through the Home Assistant integrations menu (use of config_flow.py)
 - [ ] Allow the installation of this custom component through HACS
 - [ ] Bring back the ability to configure this custom component via the entries in configuration.yaml
-- [ ] Investigate why it takes so long to load the component on an RPi (~2s on docker; ~85s on RPi3)
+- [x] Investigate why it takes so long to load the component on an RPi (~2s on docker; ~85s on RPi3)
 - [ ] Add programming capability for filter cycles
 - [ ] Change the way I update entities (from polling mode to subscribing to updates)
 - [ ] Customize entity IDs with **Spa Client** custom name to allow multiple integrations in the same Home Assistant instance

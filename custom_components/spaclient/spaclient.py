@@ -708,7 +708,6 @@ class spaclient:
         message = prefix + bytes([length]) + type + payload + bytes([checksum]) + prefix
 
         try:
-            #_LOGGER.info("send_message : %s", message) #Validation point
             self.s.send(message)
         except IOError as e:
             #_LOGGER.info("send_message - IOError = %s", e) #Validation point
@@ -716,9 +715,8 @@ class spaclient:
                 self.get_socket()
 
     async def send_module_identification_request(self):
+        self.send_message(b'\x0a\xbf\x04', bytes([]))
         while self.module_identification_loaded == False:
-            self.send_message(b'\x0a\xbf\x04', bytes([]))
-            await asyncio.sleep(.1)
             self.read_msg()
 
     async def keep_alive_call(self):
@@ -743,27 +741,23 @@ class spaclient:
             self.send_message(b'\x0a\xbf\x21', bytes([now.hour]) + bytes([now.minute]))
 
     async def send_configuration_request(self):
+        self.send_message(b'\x0a\xbf\x22', b'\x00' + b'\x00' + b'\x01')
         while self.configuration_loaded == False:
-            self.send_message(b'\x0a\xbf\x22', b'\x00' + b'\x00' + b'\x01')
-            await asyncio.sleep(.1)
             self.read_msg()
 
     async def send_filter_cycles_request(self):
+        self.send_message(b'\x0a\xbf\x22', b'\x01' + b'\x00' + b'\x00')
         while self.filter_cycles_loaded == False:
-            self.send_message(b'\x0a\xbf\x22', b'\x01' + b'\x00' + b'\x00')
-            await asyncio.sleep(.1)
             self.read_msg()
 
     async def send_information_request(self):
+        self.send_message(b'\x0a\xbf\x22', b'\x02' + b'\x00' + b'\x00')
         while self.information_loaded == False:
-            self.send_message(b'\x0a\xbf\x22', b'\x02' + b'\x00' + b'\x00')
-            await asyncio.sleep(.1)
             self.read_msg()
 
     async def send_additional_information_request(self):
+        self.send_message(b'\x0a\xbf\x22', b'\x04' + b'\x00' + b'\x00')
         while self.additional_information_loaded == False:
-            self.send_message(b'\x0a\xbf\x22', b'\x04' + b'\x00' + b'\x00')
-            await asyncio.sleep(.1)
             self.read_msg()
 
     def send_preferences_request(self): #Not use yet!
