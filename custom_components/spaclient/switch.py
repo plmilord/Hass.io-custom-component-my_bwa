@@ -63,7 +63,7 @@ class SpaPump(SpaClientDevice, SwitchEntity):
         return self._icon
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes of the device."""
         attrs = {}
         attrs['Pump ' + str(self._pump_num)] = self._spaclient.get_pump(self._pump_num)
@@ -121,7 +121,7 @@ class Blower(SpaClientDevice, SwitchEntity):
         return self._icon
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes of the device."""
         attrs = {}
         attrs["Blower"] = self._spaclient.get_blower()
@@ -249,7 +249,7 @@ class HeatMode(SpaClientDevice, SwitchEntity):
         return self._icon
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes of the device."""
         attrs = {}
         attrs["Heat Mode"] = self._spaclient.get_heat_mode()
@@ -296,7 +296,7 @@ class TempRange(SpaClientDevice, SwitchEntity):
         return self._icon
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes of the device."""
         attrs = {}
         attrs["Temperature Range"] = self._spaclient.get_temp_range()

@@ -90,7 +90,7 @@ class FilterCycle(SpaClientDevice, BinarySensorEntity):
         return 'Filter Cycle ' + str(self._filter_num) + ' Status'
 
     @property
-    def device_state_attributes(self):
+    def extra_state_attributes(self):
         """Return the state attributes of the device."""
         attrs = {}
         attrs["Begins"] = self._spaclient.get_filter_begins(self._filter_num)

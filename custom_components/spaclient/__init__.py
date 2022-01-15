@@ -5,15 +5,6 @@ import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 
 # Import the device class from the component that you want to support
-from .spaclient import spaclient
-from homeassistant.config_entries import SOURCE_IMPORT
-from homeassistant.const import (
-    CONF_HOST,
-    CONF_NAME,
-    CONF_SCAN_INTERVAL,
-)
-from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.entity import Entity
 from .const import (
     _LOGGER,
     CONF_SYNC_TIME,
@@ -25,6 +16,15 @@ from .const import (
     SPA,
     SPACLIENT_COMPONENTS,
 )
+from .spaclient import spaclient
+from homeassistant.config_entries import SOURCE_IMPORT
+from homeassistant.const import (
+    CONF_HOST,
+    CONF_NAME,
+    CONF_SCAN_INTERVAL,
+)
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.entity import Entity
 
 
 CONFIG_SCHEMA = vol.Schema(
@@ -74,6 +74,8 @@ async def async_setup_entry(hass, config_entry):
     await spa.send_additional_information_request()
     await spa.send_filter_cycles_request()
 
+    await update_listener(hass, config_entry)
+
     hass.loop.create_task(spa.read_all_msg())
     hass.loop.create_task(spa.keep_alive_call())
 
@@ -86,6 +88,7 @@ async def async_setup_entry(hass, config_entry):
 
 async def async_unload_entry(hass, config_entry) -> bool:
     """Unload a config entry."""
+
     unload_ok = all(
         await asyncio.gather(
             *[
@@ -106,6 +109,7 @@ async def async_unload_entry(hass, config_entry) -> bool:
 
 async def update_listener(hass, config_entry):
     """Handle options update."""
+
     if config_entry.options.get(CONF_SYNC_TIME):
         spa = hass.data[DOMAIN][config_entry.entry_id][SPA]
 

@@ -31,6 +31,7 @@ DATA_SCHEMA = vol.Schema(
 @callback
 def configured_instances(hass):
     """Return a set of configured Spa Client instances."""
+
     return {entry.title for entry in hass.config_entries.async_entries(DOMAIN)}
 
 

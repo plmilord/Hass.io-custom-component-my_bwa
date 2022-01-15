@@ -23,7 +23,7 @@
             "init": {
                 "data": {
                     "scan_interval": "Fr\u00e9quence rafra\u00eechissement des entit\u00e9s (secondes)",
-                    "sync_time": "Gardez l'heure de votre contrôleur Balboa BP synchronis\u00e9e avec Home Assistant"
+                    "sync_time": "Gardez l'heure de votre contr\u00f4leur Balboa BP synchronis\u00e9e avec Home Assistant"
                 }
             }
         }

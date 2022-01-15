@@ -735,7 +735,6 @@ class spaclient:
         self.send_message(b'\x0a\xbf\x20', bytes([int(temp)]))
 
     async def set_current_time(self):
-        #_LOGGER.info("Balboa BP controller's time synchronized with Home Assistant") #Validation point
         now = dt_util.utcnow()
         now = dt_util.as_local(now)
         if self.time_scale == "24 Hr":
