@@ -39,7 +39,7 @@ class spaclient:
         self.pump4 = "Off"
         self.pump5 = "Off"
         self.pump6 = "Off"
-        self.circ_pump = "Off"
+        self.circ_pump = False
         self.blower = "Off"
         self.light1 = False
         self.light2 = False
@@ -218,7 +218,7 @@ class spaclient:
         self.pump5 = ("Off", "Low", "High")[byte_array[12] & 0x03]
         self.pump6 = ("Off", "Low", "High")[byte_array[12] >> 6 & 0x03]
         flag5 = byte_array[13]
-        self.circ_pump = "Off" if (flag5 & 0x02) == 0 else "On"
+        self.circ_pump = flag5 & 0x02
         self.blower =  "Off" if (flag5 & 0x0c) >> 2 == 0 else "On"
         self.light1 = byte_array[14] & 0x03 == 0x03
         self.light2 = byte_array[14] >> 6 & 0x03 == 0x03
@@ -708,6 +708,7 @@ class spaclient:
         message = prefix + bytes([length]) + type + payload + bytes([checksum]) + prefix
 
         try:
+            #_LOGGER.info("send_message : %s", message) #Validation point
             self.s.send(message)
         except IOError as e:
             #_LOGGER.info("send_message - IOError = %s", e) #Validation point
