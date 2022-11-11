@@ -6,7 +6,7 @@ from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE, HVAC_MODE_HEAT, HVAC_MODE_OFF)
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
-from homeassistant.util.temperature import convert as convert_temperature
+from homeassistant.util.unit_conversion import TemperatureConverter
 
 from datetime import timedelta
 SCAN_INTERVAL = timedelta(seconds=1)
@@ -67,11 +67,11 @@ class SpaThermostat(SpaClientDevice, ClimateEntity):
         """Return the current temperature."""
         if self._spaclient.get_current_temp() != None:
             if self.hass.config.units.temperature_unit == TEMP_CELSIUS and self._spaclient.temp_scale == "Fahrenheit":
-                return round(convert_temperature(self._spaclient.get_current_temp(), TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2) / 2
+                return round(TemperatureConverter.convert(self._spaclient.get_current_temp(), TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2) / 2
             if self.hass.config.units.temperature_unit == TEMP_CELSIUS and self._spaclient.temp_scale == "Celsius":
                 return self._spaclient.get_current_temp() / 2
             if self.hass.config.units.temperature_unit == TEMP_FAHRENHEIT and self._spaclient.temp_scale == "Celsius":
-                return round(convert_temperature(self._spaclient.get_current_temp() / 2, TEMP_CELSIUS, TEMP_FAHRENHEIT) * 2) / 2
+                return round(TemperatureConverter.convert(self._spaclient.get_current_temp() / 2, TEMP_CELSIUS, TEMP_FAHRENHEIT) * 2) / 2
             return self._spaclient.get_current_temp()
         return None
 
@@ -79,17 +79,17 @@ class SpaThermostat(SpaClientDevice, ClimateEntity):
     def target_temperature(self):
         """Return the target temperature."""
         if self.hass.config.units.temperature_unit == TEMP_CELSIUS and self._spaclient.temp_scale == "Fahrenheit":
-            return round(convert_temperature(self._spaclient.get_set_temp(), TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2) / 2
+            return round(TemperatureConverter.convert(self._spaclient.get_set_temp(), TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2) / 2
         if self.hass.config.units.temperature_unit == TEMP_CELSIUS and self._spaclient.temp_scale == "Celsius":
             return self._spaclient.get_set_temp() / 2
         if self.hass.config.units.temperature_unit == TEMP_FAHRENHEIT and self._spaclient.temp_scale == "Celsius":
-            return round(convert_temperature(self._spaclient.get_set_temp() / 2, TEMP_CELSIUS, TEMP_FAHRENHEIT) * 2) / 2
+            return round(TemperatureConverter.convert(self._spaclient.get_set_temp() / 2, TEMP_CELSIUS, TEMP_FAHRENHEIT) * 2) / 2
         return self._spaclient.get_set_temp()
 
     async def async_set_temperature(self, **kwargs):
         temperature = kwargs[ATTR_TEMPERATURE]
         if self.hass.config.units.temperature_unit == TEMP_CELSIUS:
-            temperature = round(convert_temperature(temperature, TEMP_CELSIUS, TEMP_FAHRENHEIT))
+            temperature = round(TemperatureConverter.convert(temperature, TEMP_CELSIUS, TEMP_FAHRENHEIT))
         await self._spaclient.set_temperature(temperature)
 
     async def async_set_hvac_mode(self, hvac_mode):
@@ -102,15 +102,15 @@ class SpaThermostat(SpaClientDevice, ClimateEntity):
     def min_temp(self):
         """Return the minimum temperature."""
         if self._spaclient.get_temp_range() == "High":
-            return convert_temperature(self._spaclient.get_high_range_min(), TEMP_FAHRENHEIT, self.temperature_unit)
-        return convert_temperature(self._spaclient.get_low_range_min(), TEMP_FAHRENHEIT, self.temperature_unit)
+            return TemperatureConverter.convert(self._spaclient.get_high_range_min(), TEMP_FAHRENHEIT, self.temperature_unit)
+        return TemperatureConverter.convert(self._spaclient.get_low_range_min(), TEMP_FAHRENHEIT, self.temperature_unit)
 
     @property
     def max_temp(self):
         """Return the maximum temperature."""
         if self._spaclient.get_temp_range() == "High":
-            return convert_temperature(self._spaclient.get_high_range_max(), TEMP_FAHRENHEIT, self.temperature_unit)
-        return convert_temperature(self._spaclient.get_low_range_max(), TEMP_FAHRENHEIT, self.temperature_unit)
+            return TemperatureConverter.convert(self._spaclient.get_high_range_max(), TEMP_FAHRENHEIT, self.temperature_unit)
+        return TemperatureConverter.convert(self._spaclient.get_low_range_max(), TEMP_FAHRENHEIT, self.temperature_unit)
 
     @property
     def temperature_unit(self):

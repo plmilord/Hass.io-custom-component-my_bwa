@@ -15,6 +15,7 @@ from .const import (
     MIN_SCAN_INTERVAL,
     SPA,
     SPACLIENT_COMPONENTS,
+    CONF_CHANNEL,
 )
 from .spaclient import spaclient
 from homeassistant.config_entries import SOURCE_IMPORT
@@ -33,7 +34,10 @@ CONFIG_SCHEMA = vol.Schema(
             {
                 vol.Required(CONF_HOST): cv.string,
                 vol.Required(CONF_NAME): cv.string,
-                vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): vol.All(cv.positive_int, vol.Clamp(min=MIN_SCAN_INTERVAL)),
+                vol.Optional(CONF_CHANNEL): cv.positive_int,
+                vol.Optional(
+                    CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
+                ): vol.All(cv.positive_int, vol.Clamp(min=MIN_SCAN_INTERVAL)),
                 vol.Optional(CONF_SYNC_TIME, default=False): bool,
             }
         )
@@ -60,15 +64,19 @@ async def async_setup(hass, base_config):
 async def async_setup_entry(hass, config_entry):
     """Set up Spa Client from a config entry."""
 
-    spa = spaclient(config_entry.data[CONF_HOST])
-    hass.data[DOMAIN][config_entry.entry_id] = {SPA: spa, DATA_LISTENER: [config_entry.add_update_listener(update_listener)]}
+    conf = config_entry.data
+    spa = spaclient(conf[CONF_HOST], conf.get(CONF_CHANNEL))
+    hass.data[DOMAIN][config_entry.entry_id] = {
+        SPA: spa,
+        DATA_LISTENER: [config_entry.add_update_listener(update_listener)],
+    }
 
     connected = await spa.validate_connection()
     if not connected:
-        _LOGGER.error("Failed to connect to spa at %s", config_entry.data[CONF_HOST])
+        _LOGGER.error("Failed to connect to spa at %s", conf[CONF_HOST])
         raise ConfigEntryNotReady
 
-    await spa.send_module_identification_request()
+    # await spa.send_module_identification_request()
     await spa.send_configuration_request()
     await spa.send_information_request()
     await spa.send_additional_information_request()
@@ -80,7 +88,9 @@ async def async_setup_entry(hass, config_entry):
     hass.loop.create_task(spa.keep_alive_call())
 
     for component in SPACLIENT_COMPONENTS:
-        hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, component))
+        hass.async_create_task(
+            hass.config_entries.async_forward_entry_setup(config_entry, component)
+        )
 
     spa.print_variables()
     return True
@@ -98,7 +108,7 @@ async def async_unload_entry(hass, config_entry) -> bool:
         )
     )
 
-    hass.data[DOMAIN][config_entry.entry_id][DATA_LISTENER]:listener()
+    hass.data[DOMAIN][config_entry.entry_id][DATA_LISTENER]: listener()
 
     if unload_ok:
         hass.data[DOMAIN].pop(config_entry.entry_id)

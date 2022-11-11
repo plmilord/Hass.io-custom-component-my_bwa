@@ -11,7 +11,8 @@
             "user": {
                 "data": {
                     "host": "Host",
-                    "name": "Name"
+                    "name": "Name",
+                    "channel": "Communication channel 16-47"
                 },
                 "title": "Connect to the bwa Wi-Fi Module"
             }

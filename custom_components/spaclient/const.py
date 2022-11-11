@@ -8,6 +8,7 @@ DEFAULT_SCAN_INTERVAL = 1
 DOMAIN = "spaclient"
 MIN_SCAN_INTERVAL = 1
 SPA = "spa"
+CONF_CHANNEL = "channel"
 
 SPACLIENT_COMPONENTS = [
     "binary_sensor",

@@ -1,6 +1,8 @@
 import asyncio
 import socket
 
+from async_timeout import timeout
+
 import homeassistant.util.dt as dt_util
 
 # Import the device class from the component that you want to support
@@ -8,15 +10,34 @@ from .const import _LOGGER
 from homeassistant.const import TEMP_CELSIUS, TEMP_FAHRENHEIT
 from homeassistant.util.temperature import convert as convert_temperature
 from threading import Lock
+from collections import deque
+
+
+def retry(retries=5, timeout_s=2):
+    def retry_decorator(fun):
+        def retry_with_timeout(*args, **kwargs):
+            for _ in range(retries):
+                try:
+                    with timeout(timeout_s):
+                        return fun(*args, **kwargs)
+                except TimeoutError:
+                    pass
+
+        return retry_with_timeout
+
+    return retry_decorator
 
 
 class spaclient:
-    def __init__(self, host_ip):
-        """ socket variables """
+    def __init__(self, host_ip, channel_id):
+        """socket variables"""
         self.is_connected = False
         self.l = Lock()
         self.s = None
         self.host_ip = host_ip
+        self.queue = deque()
+        self.channel_id = bytes([channel_id]) if channel_id else None
+        self.channel_connected = False
 
         """ Status update variable """
         self.status_chunk_array = []
@@ -101,7 +122,7 @@ class spaclient:
         try:
             self.s.connect((self.host_ip, 4257))
         except socket.error as e:
-            #_LOGGER.info("socket.error = %s", e) #Validation point
+            _LOGGER.info("socket.error = %s", e)  # Validation point
             if e.errno != 115:
                 self.s.close()
                 self.is_connected = False
@@ -114,19 +135,27 @@ class spaclient:
 
         self.get_socket()
 
-        while count != 20 and self.is_connected != True:
+        while count < 20 and self.is_connected != True:
             self.read_msg()
-            await asyncio.sleep(.1)
+            await asyncio.sleep(0.1)
             count += 1
 
         if self.is_connected == False:
             self.s.close()
             self.s = None
 
-        return self.is_connected
+        with timeout(5):
+            while not self.channel_connected:
+                self.read_msg()
+
+        if not self.channel_connected:
+            self.s.close()
+            self.s = None
+
+        return self.is_connected and self.channel_connected
 
     def parse_status_update(self, byte_array):
-        """ Parse a status update from the spa.
+        """Parse a status update from the spa.
 
             SSID       Length
         M100_210 V6.0    28
@@ -207,7 +236,7 @@ class spaclient:
         flag3 = byte_array[9]
         self.temp_scale = "Fahrenheit" if (flag3 & 0x01 == 0) else "Celsius"
         self.time_scale = "12 Hr" if (flag3 & 0x02 == 0) else "24 Hr"
-        self.filter_mode = (flag3 & 0x0c) >> 2
+        self.filter_mode = (flag3 & 0x0C) >> 2
         flag4 = byte_array[10]
         self.heating = (flag4 & 0x30) >> 4
         self.temp_range = "Low" if (flag4 & 0x04) >> 2 == 0 else "High"
@@ -219,7 +248,7 @@ class spaclient:
         self.pump6 = ("Off", "Low", "High")[byte_array[12] >> 6 & 0x03]
         flag5 = byte_array[13]
         self.circ_pump = flag5 & 0x02
-        self.blower =  "Off" if (flag5 & 0x0c) >> 2 == 0 else "On"
+        self.blower = "Off" if (flag5 & 0x0C) >> 2 == 0 else "On"
         self.light1 = byte_array[14] & 0x03 == 0x03
         self.light2 = byte_array[14] >> 6 & 0x03 == 0x03
         flag6 = byte_array[15]
@@ -229,7 +258,7 @@ class spaclient:
         self.set_temp = byte_array[20]
 
     def parse_filter_cycles_response(self, byte_array):
-        """ Parse filter cycles response.
+        """Parse filter cycles response.
 
                          00 01 02 03 04 05 06 07
         MS ML MT MT MT   1H 1M 1D 1E 2H 2M 2D 2E   CS ME
@@ -259,7 +288,7 @@ class spaclient:
         self.filter_cycles_loaded = True
 
     def parse_information_response(self, byte_array):
-        """ Parse information response.
+        """Parse information response.
 
                          00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
         MS ML MT MT MT   I0 I1 V0 V1 M0 M1 M2 M3 M4 M5 M6 M7 SU S0 S1 S2 S3 HV HT D0 D1   CS ME
@@ -276,14 +305,25 @@ class spaclient:
 
         """
 
-        model = [byte_array[4], byte_array[5], byte_array[6], byte_array[7], byte_array[8], byte_array[9], byte_array[10], byte_array[11]]
+        model = [
+            byte_array[4],
+            byte_array[5],
+            byte_array[6],
+            byte_array[7],
+            byte_array[8],
+            byte_array[9],
+            byte_array[10],
+            byte_array[11],
+        ]
         model_name = "".join(map(chr, model))
         self.model_name = model_name.strip()
 
         self.sw_vers = f"{str(byte_array[2])}.{str(byte_array[3])}"
         self.setup = byte_array[12]
         self.ssid = f"M{str(byte_array[0])}_{str(byte_array[1])} V{self.sw_vers}"
-        self.cfg_sig = f"{byte_array[13]:x}{byte_array[14]:x}{byte_array[15]:x}{byte_array[16]:x}"
+        self.cfg_sig = (
+            f"{byte_array[13]:x}{byte_array[14]:x}{byte_array[15]:x}{byte_array[16]:x}"
+        )
         self.heater_voltage = 240 if byte_array[17] == 0x01 else "Unknown"
         self.heater_type = "Standard" if byte_array[18] == 0x0A else "Unknown"
         self.dip_switch = f"{byte_array[19]:08b}{byte_array[20]:08b}"
@@ -291,7 +331,7 @@ class spaclient:
         self.information_loaded = True
 
     def parse_additional_information_response(self, byte_array):
-        """ Parse additional information response.
+        """Parse additional information response.
 
                          00 01 02 03 04 05 06 07 08
         MS ML MT MT MT   00 01 LL LH HL HH 06 07 08   CS ME
@@ -326,7 +366,7 @@ class spaclient:
         self.additional_information_loaded = True
 
     def parse_preferences_response(self, byte_array):
-        """ Parse preferences response.
+        """Parse preferences response.
 
                          00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17
         MS ML MT MT MT   00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17   CS ME
@@ -348,7 +388,7 @@ class spaclient:
         return True
 
     def parse_fault_log_response(self, byte_array):
-        """ Parse fault log response.
+        """Parse fault log response.
 
                          00 01 02 03 04 05 06 07 08 09
         MS ML MT MT MT   00 01 02 03 04 05 06 07 08 09   CS ME
@@ -370,7 +410,7 @@ class spaclient:
         return True
 
     def parse_gfci_test_response(self, byte_array):
-        """ Parse fault log response.
+        """Parse fault log response.
 
                          00
         MS ML MT MT MT   00   CS ME
@@ -384,7 +424,7 @@ class spaclient:
         return True
 
     def parse_configuration_response(self, byte_array):
-        """ Parse a panel config response.
+        """Parse a panel config response.
 
                          00 01 02 03 04 05
         MS ML MT MT MT   00 01 02 03 04 05   CS ME
@@ -400,14 +440,14 @@ class spaclient:
         """
 
         self.pump_array[0] = int((byte_array[0] & 0x03))
-        self.pump_array[1] = int((byte_array[0] & 0x0c) >> 2)
+        self.pump_array[1] = int((byte_array[0] & 0x0C) >> 2)
         self.pump_array[2] = int((byte_array[0] & 0x30) >> 4)
-        self.pump_array[3] = int((byte_array[0] & 0xc0) >> 6)
+        self.pump_array[3] = int((byte_array[0] & 0xC0) >> 6)
         self.pump_array[4] = int((byte_array[1] & 0x03))
-        self.pump_array[5] = int((byte_array[1] & 0xc0) >> 6)
+        self.pump_array[5] = int((byte_array[1] & 0xC0) >> 6)
 
         self.light_array[0] = int((byte_array[2] & 0x03) != 0)
-        self.light_array[1] = int((byte_array[2] & 0xc0) != 0)
+        self.light_array[1] = int((byte_array[2] & 0xC0) != 0)
 
         self.circ_pump_array[0] = int((byte_array[3] & 0x80) != 0)
         self.blower_array[0] = int((byte_array[3] & 0x03) != 0)
@@ -419,7 +459,7 @@ class spaclient:
         self.configuration_loaded = True
 
     def parse_module_identification_response(self, byte_array):
-        """ Parse a module identification response.
+        """Parse a module identification response.
 
                          00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
         MS ML MT MT MT   00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24   CS ME
@@ -579,12 +619,24 @@ class spaclient:
     def get_filter_ends(self, filter_num):
         if filter_num == 1:
             if self.filter1_hour + self.filter1_duration_hours >= 24:
-                return "%02d:%02d" % (self.filter1_hour + self.filter1_duration_hours - 24, self.filter1_minute + self.filter1_duration_minutes)
-            return "%02d:%02d" % (self.filter1_hour + self.filter1_duration_hours, self.filter1_minute + self.filter1_duration_minutes)
+                return "%02d:%02d" % (
+                    self.filter1_hour + self.filter1_duration_hours - 24,
+                    self.filter1_minute + self.filter1_duration_minutes,
+                )
+            return "%02d:%02d" % (
+                self.filter1_hour + self.filter1_duration_hours,
+                self.filter1_minute + self.filter1_duration_minutes,
+            )
         else:
             if self.filter2_hour + self.filter2_duration_hours >= 24:
-                return "%02d:%02d" % (self.filter2_hour + self.filter2_duration_hours - 24, self.filter2_minute + self.filter2_duration_minutes)
-            return "%02d:%02d" % (self.filter2_hour + self.filter2_duration_hours, self.filter2_minute + self.filter2_duration_minutes)
+                return "%02d:%02d" % (
+                    self.filter2_hour + self.filter2_duration_hours - 24,
+                    self.filter2_minute + self.filter2_duration_minutes,
+                )
+            return "%02d:%02d" % (
+                self.filter2_hour + self.filter2_duration_hours,
+                self.filter2_minute + self.filter2_duration_minutes,
+            )
 
     def get_filter_mode(self, filter_num):
         if filter_num == 1:
@@ -596,17 +648,17 @@ class spaclient:
         return False
 
     def compute_checksum(self, length, payload):
-        crc = 0xb5
+        crc = 0xB5
         for cur in range(length):
             for i in range(8):
                 bit = crc & 0x80
-                crc = ((crc << 1) & 0xff) | ((payload[cur] >> (7 - i)) & 0x01)
+                crc = ((crc << 1) & 0xFF) | ((payload[cur] >> (7 - i)) & 0x01)
                 if bit:
                     crc = crc ^ 0x07
-            crc &= 0xff
+            crc &= 0xFF
         for i in range(8):
             bit = crc & 0x80
-            crc = (crc << 1) & 0xff
+            crc = (crc << 1) & 0xFF
             if bit:
                 crc ^= 0x07
         return crc ^ 0x02
@@ -617,28 +669,33 @@ class spaclient:
         try:
             len_chunk = self.s.recv(2)
         except IOError as e:
-            #_LOGGER.info("1. read_msg - e.errno = %s", e) #Validation point
+            # _LOGGER.info("1. read_msg - e.errno = %s", e) #Validation point
             if e.errno != 11:
                 self.get_socket()
             self.l.release()
             return True
 
-        if len_chunk == b'~' or len_chunk == b'' or len(len_chunk) == 0:
-            #_LOGGER.info("2. read_msg - len_chunk = %s ; len(len_chunk) = %s", len_chunk, len(len_chunk)) #Validation point
+        if len_chunk == b"~" or len_chunk == b"" or len(len_chunk) == 0:
+            # _LOGGER.info("2. read_msg - len_chunk = %s ; len(len_chunk) = %s", len_chunk, len(len_chunk)) #Validation point
+            self.l.release()
+            return True
+
+        if len(len_chunk) == 1:
+            _LOGGER.info("Invalid message %s", hex(len_chunk))
             self.l.release()
             return True
 
         length = len_chunk[1]
 
         if int(length) == 0:
-            #_LOGGER.info("3. read_msg - int(length) = 0") #Validation point
+            # _LOGGER.info("3. read_msg - int(length) = 0") #Validation point
             self.l.release()
             return True
 
         try:
             chunk = self.s.recv(length)
         except IOError as e:
-            #_LOGGER.info("4. read_msg - e.errno = %s", e) #Validation point
+            # _LOGGER.info("4. read_msg - e.errno = %s", e) #Validation point
             if e.errno != 11:
                 self.get_socket()
             self.l.release()
@@ -646,144 +703,218 @@ class spaclient:
 
         self.l.release()
 
+        if len(chunk) != length:
+            self.l.release()
+            return True
+
         if chunk != self.status_chunk_array:
-            if chunk[0:3] == b'\xff\xaf\x13' and ((self.module_identification_loaded and self.configuration_loaded and self.information_loaded and self.additional_information_loaded) or (self.is_connected == False)):
-                #_LOGGER.info("Status update = %s", chunk[3:]) #Validation point
+            if not self.channel_connected or not self.channel_id:
+                if chunk[0] == 0xFE and chunk[2] == 2:
+                    self.channel_id = bytes([chunk[3]])
+                    _LOGGER.info(
+                        "Client ID Response for channel %s", str(self.channel_id)
+                    )
+                    if self.channel_id[0] > 0x2F:
+                        self.channel_id = bytes([0x2F])
+
+                    self.send_message(self.channel_id + b"\xbf\x03", bytes([]), True)
+
+                if chunk[0] == 0xFE and chunk[2] == 0:
+                    _LOGGER.info("New client request. Requesting channel")
+
+                    self.send_message(b"\xfe\xbf\x01", b"\x02\xf1\x73", True)
+            if chunk[0:3] == b"\xff\xaf\x13" and (
+                (
+                    self.configuration_loaded
+                    and self.information_loaded
+                    and self.additional_information_loaded
+                )
+                or (self.is_connected == False)
+            ):
+                # _LOGGER.info("Status update = %s", chunk[3:]) #Validation point
                 self.parse_status_update(chunk[3:])
                 self.status_chunk_array = chunk
                 self.is_connected = True
                 return True
 
-            if chunk[0:3] == b'\x0a\xbf\x23':
-                #_LOGGER.info("Filter cycles response = %s", chunk[3:]) #Validation point
-                self.parse_filter_cycles_response(chunk[3:])
-                return True
+            if self.channel_id and chunk[0] == self.channel_id[0]:
+                if chunk[1:3] == b"\xbf\x23":
+                    # _LOGGER.info("Filter cycles response = %s", chunk[3:]) #Validation point
+                    self.parse_filter_cycles_response(chunk[3:])
+                    return True
 
-            if chunk[0:3] == b'\x0a\xbf\x24' and self.information_loaded != True:
-                #_LOGGER.info("Information response = %s", chunk[3:]) #Validation point
-                self.parse_information_response(chunk[3:])
-                return True
+                if chunk[1:3] == b"\xbf\x24" and self.information_loaded != True:
+                    # _LOGGER.info("Information response = %s", chunk[3:]) #Validation point
+                    self.parse_information_response(chunk[3:])
+                    return True
 
-            if chunk[0:3] == b'\x0a\xbf\x25' and self.additional_information_loaded != True:
-                #_LOGGER.info("Additional information response = %s", chunk[3:]) #Validation point
-                self.parse_additional_information_response(chunk[3:])
-                return True
+                if (
+                    chunk[1:3] == b"\xbf\x25"
+                    and self.additional_information_loaded != True
+                ):
+                    # _LOGGER.info("Additional information response = %s", chunk[3:]) #Validation point
+                    self.parse_additional_information_response(chunk[3:])
+                    return True
 
-            if chunk[0:3] == b'\x0a\xbf\x26':
-                #_LOGGER.info("Preferences response = %s", chunk[3:]) #Validation point
-                self.parse_preferences_response(chunk[3:])
-                return True
+                if chunk[1:3] == b"\xbf\x26":
+                    # _LOGGER.info("Preferences response = %s", chunk[3:]) #Validation point
+                    self.parse_preferences_response(chunk[3:])
+                    return True
 
-            if chunk[0:3] == b'\x0a\xbf\x28':
-                #_LOGGER.info("Fault log response = %s", chunk[3:]) #Validation point
-                self.parse_fault_log_response(chunk[3:])
-                return True
+                if chunk[1:3] == b"\xbf\x28":
+                    # _LOGGER.info("Fault log response = %s", chunk[3:]) #Validation point
+                    self.parse_fault_log_response(chunk[3:])
+                    return True
 
-            if chunk[0:3] == b'\x0a\xbf\x2b':
-                #_LOGGER.info("GFCI test response = %s", chunk[3:]) #Validation point
-                self.parse_gfci_test_response(chunk[3:])
-                return True
+                if chunk[1:3] == b"\xbf\x2b":
+                    # _LOGGER.info("GFCI test response = %s", chunk[3:]) #Validation point
+                    self.parse_gfci_test_response(chunk[3:])
+                    return True
 
-            if chunk[0:3] == b'\x0a\xbf\x2e' and self.configuration_loaded != True:
-                #_LOGGER.info("Configuration response = %s", chunk[3:]) #Validation point
-                self.parse_configuration_response(chunk[3:])
-                return True
+                if chunk[1:3] == b"\xbf\x2e" and self.configuration_loaded != True:
+                    # _LOGGER.info("Configuration response = %s", chunk[3:]) #Validation point
+                    self.parse_configuration_response(chunk[3:])
+                    return True
 
-            if chunk[0:3] == b'\x0a\xbf\x94' and self.module_identification_loaded != True:
-                #_LOGGER.info("Module identification response = %s", chunk[3:]) #Validation point
-                self.parse_module_identification_response(chunk[3:])
-                return True
+                if (
+                    chunk[1:3] == b"\xbf\x94"
+                    and self.module_identification_loaded != True
+                ):
+                    # _LOGGER.info("Module identification response = %s", chunk[3:]) #Validation point
+                    self.parse_module_identification_response(chunk[3:])
+                    return True
+
+                # Clear to send for us
+                if chunk[2] == 6:
+                    self.channel_connected = True
+                    if self.queue:
+                        message = self.queue.pop()
+                        self.write(message)
+                        return True
 
         return True
 
     async def read_all_msg(self):
         while True:
             self.read_msg()
-            await asyncio.sleep(.1)
+            await asyncio.sleep(0)
 
-    def send_message(self, type, payload):
+    def send_message(self, message_type, payload, ignore_queue=False):
         length = 5 + len(payload)
-        checksum = self.compute_checksum(length - 1, bytes([length]) + type + payload)
-        prefix = b'\x7e'
-        message = prefix + bytes([length]) + type + payload + bytes([checksum]) + prefix
+        checksum = self.compute_checksum(
+            length - 1, bytes([length]) + message_type + payload
+        )
+        prefix = b"\x7e"
+        message = (
+            prefix
+            + bytes([length])
+            + message_type
+            + payload
+            + bytes([checksum])
+            + prefix
+        )
 
+        if ignore_queue:
+            self.write(message)
+        else:
+            self.queue.append(message)
+
+    def write(self, message):
         try:
-            #_LOGGER.info("send_message : %s", message) #Validation point
+            # _LOGGER.info("send_message : %s", message) #Validation point
             self.s.send(message)
         except IOError as e:
-            #_LOGGER.info("send_message - IOError = %s", e) #Validation point
+            # _LOGGER.info("send_message - IOError = %s", e) #Validation point
             if e.errno != 11:
                 self.get_socket()
 
+    async def get_channel(self):
+        while not self.channel_connected:
+            self.read_msg()
+
     async def send_module_identification_request(self):
-        self.send_message(b'\x0a\xbf\x04', bytes([]))
+        self.send_message(self.channel_id + b"\xbf\x04", bytes([]))
         while self.module_identification_loaded == False:
             self.read_msg()
 
     async def keep_alive_call(self):
         while True:
-            self.send_message(b'\x0a\xbf\x04', bytes([]))
+            self.send_message(self.channel_id + b"\xbf\x04", bytes([]))
             await asyncio.sleep(30)
 
     def send_toggle_message(self, item):
-        self.send_message(b'\x0a\xbf\x11', bytes([item]) + b'\x00')
+        self.send_message(self.channel_id + b"\xbf\x11", bytes([item]) + b"\x00")
 
+    @retry()
     async def set_temperature(self, temp):
         if self.temp_scale == "Celsius":
             temp = round(convert_temperature(temp, TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2)
-        self.send_message(b'\x0a\xbf\x20', bytes([int(temp)]))
+        self.send_message(self.channel_id + b"\xbf\x20", bytes([int(temp)]))
+        while self.set_temp != temp:
+            self.read_msg()
 
     async def set_current_time(self):
         now = dt_util.utcnow()
         now = dt_util.as_local(now)
         if self.time_scale == "24 Hr":
-            self.send_message(b'\x0a\xbf\x21', bytes([128 + now.hour]) + bytes([now.minute]))
+            self.send_message(
+                self.channel_id + b"\xbf\x21",
+                bytes([128 + now.hour]) + bytes([now.minute]),
+            )
         else:
-            self.send_message(b'\x0a\xbf\x21', bytes([now.hour]) + bytes([now.minute]))
+            self.send_message(
+                self.channel_id + b"\xbf\x21",
+                bytes([now.hour]) + bytes([now.minute]),
+            )
 
+    @retry()
     async def send_configuration_request(self):
-        self.send_message(b'\x0a\xbf\x22', b'\x00' + b'\x00' + b'\x01')
+        self.send_message(self.channel_id + b"\xbf\x22", b"\x00" + b"\x00" + b"\x01")
         while self.configuration_loaded == False:
             self.read_msg()
 
+    @retry()
     async def send_filter_cycles_request(self):
-        self.send_message(b'\x0a\xbf\x22', b'\x01' + b'\x00' + b'\x00')
+        self.send_message(self.channel_id + b"\xbf\x22", b"\x01" + b"\x00" + b"\x00")
         while self.filter_cycles_loaded == False:
             self.read_msg()
 
+    @retry()
     async def send_information_request(self):
-        self.send_message(b'\x0a\xbf\x22', b'\x02' + b'\x00' + b'\x00')
+        self.send_message(self.channel_id + b"\xbf\x22", b"\x02" + b"\x00" + b"\x00")
         while self.information_loaded == False:
             self.read_msg()
 
+    @retry()
     async def send_additional_information_request(self):
-        self.send_message(b'\x0a\xbf\x22', b'\x04' + b'\x00' + b'\x00')
+        self.send_message(self.channel_id + b"\xbf\x22", b"\x04" + b"\x00" + b"\x00")
         while self.additional_information_loaded == False:
             self.read_msg()
 
-    def send_preferences_request(self): #Not use yet!
-        self.send_message(b'\x0a\xbf\x22', b'\x08' + b'\x00' + b'\x00')
+    def send_preferences_request(self):  # Not use yet!
+        self.send_message(self.channel_id + b"\xbf\x22", b"\x08" + b"\x00" + b"\x00")
 
-    def send_fault_log_request(self): #Not use yet!
-        self.send_message(b'\x0a\xbf\x22', b'\x20' + b'\x00' + b'\x00')
+    def send_fault_log_request(self):  # Not use yet!
+        self.send_message(self.channel_id + b"\xbf\x22", b"\x20" + b"\x00" + b"\x00")
 
-    def send_gfci_test_request(self): #Not use yet!
-        self.send_message(b'\x0a\xbf\x22', b'\x80' + b'\x00' + b'\x00')
+    def send_gfci_test_request(self):  # Not use yet!
+        self.send_message(self.channel_id + b"\xbf\x22", b"\x80" + b"\x00" + b"\x00")
 
-    def send_filter_cycle_config(self): #Not use yet!
-        self.send_message(b'\x0a\xbf\x23',
-            bytes([self.filter1_hour]) +
-            bytes([self.filter1_minute]) +
-            bytes([self.filter1_duration_hours]) +
-            bytes([self.filter1_duration_minutes]) +
-            bytes([int(self.filter2_enabled << 7) + self.filter2_hour]) +
-            bytes([self.filter2_minute]) +
-            bytes([self.filter2_duration_hours]) +
-            bytes([self.filter2_duration_minutes])
+    def send_filter_cycle_config(self):  # Not use yet!
+        self.send_message(
+            self.channel_id + b"\xbf\x23",
+            bytes([self.filter1_hour])
+            + bytes([self.filter1_minute])
+            + bytes([self.filter1_duration_hours])
+            + bytes([self.filter1_duration_minutes])
+            + bytes([int(self.filter2_enabled << 7) + self.filter2_hour])
+            + bytes([self.filter2_minute])
+            + bytes([self.filter2_duration_hours])
+            + bytes([self.filter2_duration_minutes]),
         )
 
-    def set_temperature_scale(self, temperature_scale): #Not use yet!
-        self.send_message(b'\x0a\xbf\x27', bytes([]) + bytes([]))
+    def set_temperature_scale(self, temperature_scale):  # Not use yet!
+        self.send_message(self.channel_id + b"\xbf\x27", bytes([]) + bytes([]))
 
     def set_pump(self, pump_num, value):
         pump_val = self.pump1
@@ -822,13 +953,13 @@ class spaclient:
     def set_blower(self, value):
         if self.blower == value:
             return
-        self.send_toggle_message(0x0c)
+        self.send_toggle_message(0x0C)
         self.blower = value
 
     def set_mister(self, value):
         if self.mister == value:
             return
-        self.send_toggle_message(0x0e)
+        self.send_toggle_message(0x0E)
         self.mister = value
 
     def set_light(self, light_num, value):
@@ -862,7 +993,7 @@ class spaclient:
     def set_hold_mode(self, value):
         if self.hold_mode == value:
             return
-        self.send_toggle_message(0x3c)
+        self.send_toggle_message(0x3C)
         self.hold_mode = value
 
     def set_temp_range(self, value):
@@ -871,10 +1002,15 @@ class spaclient:
         self.send_toggle_message(0x50)
         self.temp_range = value
 
+    @retry()
     def set_heat_mode(self, value):
         if self.heat_mode == value:
             return
+
         self.send_toggle_message(0x51)
+
+        while self.heat_mode != value:
+            self.read_msg()
         self.heat_mode = value
 
     def set_filter2_enabled(self, value):
@@ -890,7 +1026,7 @@ class spaclient:
         _LOGGER.info("self.l       = %s", self.l)
         _LOGGER.info("self.s       = %s", self.s)
         _LOGGER.info("self.host_ip = %s", self.host_ip)
-        
+
         _LOGGER.info("")
         _LOGGER.info("=============================")
         _LOGGER.info("<< Status update variables >>")
@@ -951,7 +1087,9 @@ class spaclient:
         _LOGGER.info("=====================================")
         _LOGGER.info("<< Module identification variables >>")
         _LOGGER.info("=====================================")
-        _LOGGER.info("self.module_identification_loaded = %s", self.module_identification_loaded)
+        _LOGGER.info(
+            "self.module_identification_loaded = %s", self.module_identification_loaded
+        )
         _LOGGER.info("self.macaddr         = %s", self.macaddr)
         _LOGGER.info("self.idigi_device_id = %s", self.idigi_device_id)
 
@@ -963,18 +1101,25 @@ class spaclient:
         _LOGGER.info("self.filter1_hour             = %s", self.filter1_hour)
         _LOGGER.info("self.filter1_minute           = %s", self.filter1_minute)
         _LOGGER.info("self.filter1_duration_hours   = %s", self.filter1_duration_hours)
-        _LOGGER.info("self.filter1_duration_minutes = %s", self.filter1_duration_minutes)
+        _LOGGER.info(
+            "self.filter1_duration_minutes = %s", self.filter1_duration_minutes
+        )
         _LOGGER.info("self.filter2_enabled          = %s", self.filter2_enabled)
         _LOGGER.info("self.filter2_hour             = %s", self.filter2_hour)
         _LOGGER.info("self.filter2_minute           = %s", self.filter2_minute)
         _LOGGER.info("self.filter2_duration_hours   = %s", self.filter2_duration_hours)
-        _LOGGER.info("self.filter2_duration_minutes = %s", self.filter2_duration_minutes)
+        _LOGGER.info(
+            "self.filter2_duration_minutes = %s", self.filter2_duration_minutes
+        )
 
         _LOGGER.info("")
         _LOGGER.info("======================================")
         _LOGGER.info("<< Additional information variables >>")
         _LOGGER.info("======================================")
-        _LOGGER.info("self.additional_information_loaded = %s", self.additional_information_loaded)
+        _LOGGER.info(
+            "self.additional_information_loaded = %s",
+            self.additional_information_loaded,
+        )
         _LOGGER.info("self.low_range_min  = %s", self.low_range_min)
         _LOGGER.info("self.low_range_max  = %s", self.low_range_max)
         _LOGGER.info("self.high_range_min = %s", self.high_range_min)

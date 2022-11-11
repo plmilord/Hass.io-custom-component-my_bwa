@@ -9,6 +9,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     MIN_SCAN_INTERVAL,
+    CONF_CHANNEL,
 )
 from .spaclient import spaclient
 from homeassistant import config_entries, core, exceptions
@@ -24,6 +25,7 @@ DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_NAME, default="Spa Client"): str,
+        vol.Optional(CONF_CHANNEL): int,
     }
 )
 
@@ -60,7 +62,9 @@ class SpaClientConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
 
-        return self.async_show_form(step_id="user", data_schema=DATA_SCHEMA, errors=errors)
+        return self.async_show_form(
+            step_id="user", data_schema=DATA_SCHEMA, errors=errors
+        )
 
     @staticmethod
     @callback
@@ -83,8 +87,16 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         data_schema = vol.Schema(
             {
-                vol.Optional(CONF_SCAN_INTERVAL, default=self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),): vol.All(cv.positive_int, vol.Clamp(min=MIN_SCAN_INTERVAL)),
-                vol.Optional(CONF_SYNC_TIME, default=self.config_entry.options.get(CONF_SYNC_TIME, False),): bool,
+                vol.Optional(
+                    CONF_SCAN_INTERVAL,
+                    default=self.config_entry.options.get(
+                        CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+                    ),
+                ): vol.All(cv.positive_int, vol.Clamp(min=MIN_SCAN_INTERVAL)),
+                vol.Optional(
+                    CONF_SYNC_TIME,
+                    default=self.config_entry.options.get(CONF_SYNC_TIME, False),
+                ): bool,
             }
         )
         return self.async_show_form(step_id="init", data_schema=data_schema)
@@ -97,8 +109,9 @@ async def validate_input(hass, data):
         if entry.data[CONF_HOST] == data[CONF_HOST]:
             raise AlreadyConfigured
 
-    spa = spaclient(data[CONF_HOST])
+    spa = spaclient(data[CONF_HOST], data[CONF_CHANNEL])
     connected = await spa.validate_connection()
+    data[CONF_CHANNEL] = spa.channel_id[0]
     if not connected:
         _LOGGER.error("Failed to connect to spa at %s", data[CONF_HOST])
         raise CannotConnect
