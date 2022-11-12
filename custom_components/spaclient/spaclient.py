@@ -797,7 +797,10 @@ class spaclient:
 
     async def read_all_msg(self):
         while True:
-            self.read_msg()
+            try:
+                self.read_msg()
+            except Exception:
+                _LOGGER.exception("Read message error")
             await asyncio.sleep(0)
 
     def send_message(self, message_type, payload, ignore_queue=False):
