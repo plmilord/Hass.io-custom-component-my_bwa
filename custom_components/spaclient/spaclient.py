@@ -15,12 +15,12 @@ from collections import deque
 
 def retry(retries=5, timeout_s=2):
     def retry_decorator(fun):
-        def retry_with_timeout(*args, **kwargs):
+        async def retry_with_timeout(*args, **kwargs):
             for _ in range(retries):
                 try:
-                    with timeout(timeout_s):
-                        return fun(*args, **kwargs)
-                except TimeoutError:
+                    async with timeout(timeout_s):
+                        return await fun(*args, **kwargs)
+                except asyncio.TimeoutError:
                     pass
 
         return retry_with_timeout
@@ -143,10 +143,12 @@ class spaclient:
         if self.is_connected == False:
             self.s.close()
             self.s = None
+            return False
 
         with timeout(5):
             while not self.channel_connected:
                 self.read_msg()
+                await asyncio.sleep(0)
 
         if not self.channel_connected:
             self.s.close()
@@ -704,7 +706,6 @@ class spaclient:
         self.l.release()
 
         if len(chunk) != length:
-            self.l.release()
             return True
 
         if chunk != self.status_chunk_array:
@@ -836,6 +837,7 @@ class spaclient:
         self.send_message(self.channel_id + b"\xbf\x04", bytes([]))
         while self.module_identification_loaded == False:
             self.read_msg()
+            await asyncio.sleep(0)
 
     async def keep_alive_call(self):
         while True:
@@ -852,6 +854,7 @@ class spaclient:
         self.send_message(self.channel_id + b"\xbf\x20", bytes([int(temp)]))
         while self.set_temp != temp:
             self.read_msg()
+            await asyncio.sleep(0)
 
     async def set_current_time(self):
         now = dt_util.utcnow()
@@ -872,24 +875,28 @@ class spaclient:
         self.send_message(self.channel_id + b"\xbf\x22", b"\x00" + b"\x00" + b"\x01")
         while self.configuration_loaded == False:
             self.read_msg()
+            await asyncio.sleep(0)
 
     @retry()
     async def send_filter_cycles_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x01" + b"\x00" + b"\x00")
         while self.filter_cycles_loaded == False:
             self.read_msg()
+            await asyncio.sleep(0)
 
     @retry()
     async def send_information_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x02" + b"\x00" + b"\x00")
         while self.information_loaded == False:
             self.read_msg()
+            await asyncio.sleep(0)
 
     @retry()
     async def send_additional_information_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x04" + b"\x00" + b"\x00")
         while self.additional_information_loaded == False:
             self.read_msg()
+            await asyncio.sleep(0)
 
     def send_preferences_request(self):  # Not use yet!
         self.send_message(self.channel_id + b"\xbf\x22", b"\x08" + b"\x00" + b"\x00")
@@ -1003,7 +1010,7 @@ class spaclient:
         self.temp_range = value
 
     @retry()
-    def set_heat_mode(self, value):
+    async def set_heat_mode(self, value):
         if self.heat_mode == value:
             return
 
@@ -1011,6 +1018,8 @@ class spaclient:
 
         while self.heat_mode != value:
             self.read_msg()
+            await asyncio.sleep(0)
+
         self.heat_mode = value
 
     def set_filter2_enabled(self, value):

@@ -76,7 +76,6 @@ async def async_setup_entry(hass, config_entry):
         _LOGGER.error("Failed to connect to spa at %s", conf[CONF_HOST])
         raise ConfigEntryNotReady
 
-    # await spa.send_module_identification_request()
     await spa.send_configuration_request()
     await spa.send_information_request()
     await spa.send_additional_information_request()
