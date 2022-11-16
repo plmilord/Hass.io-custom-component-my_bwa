@@ -33,7 +33,8 @@ class spaclient:
         """socket variables"""
         self.is_connected = False
         self.l = Lock()
-        self.s = None
+        self.reader = None
+        self.writer = None
         self.host_ip = host_ip
         self.queue = deque()
         self.channel_id = bytes([channel_id]) if channel_id else None
@@ -114,45 +115,42 @@ class spaclient:
         self.nb_of_pumps = 0
         self.additional_information_loaded = False
 
-    def get_socket(self):
-        if self.s is None or self.is_connected == False:
-            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.s.setblocking(0)
+    async def get_socket(self):
+        if self.reader is None or self.writer is None or not self.is_connected:
+            self.reader, self.writer = await asyncio.open_connection(self.host_ip, 4257)
 
-        try:
-            self.s.connect((self.host_ip, 4257))
-        except socket.error as e:
-            _LOGGER.info("socket.error = %s", e)  # Validation point
-            if e.errno != 115:
-                self.s.close()
-                self.is_connected = False
-                return True
+        # except socket.error as e:
+        #     _LOGGER.info("socket.error = %s", e)  # Validation point
+        #     if e.errno != 115:
+        #         self.s.close()
+        #         self.is_connected = False
+        #         return True
 
-        return True
+        # return True
 
     async def validate_connection(self):
         count = 0
 
-        self.get_socket()
+        await self.get_socket()
 
         while count < 20 and self.is_connected != True:
-            self.read_msg()
-            await asyncio.sleep(0.1)
+            await self.read_msg()
             count += 1
 
         if self.is_connected == False:
-            self.s.close()
-            self.s = None
+            self.writer.close()
+            await self.writer.wait_closed()
+            self.writer = None
+            self.reader = None
             return False
 
         with timeout(5):
             while not self.channel_connected:
-                self.read_msg()
-                await asyncio.sleep(0)
+                await self.read_msg()
 
         if not self.channel_connected:
-            self.s.close()
-            self.s = None
+            self.writer.close()
+            await self.writer.wait_closed()
 
         return self.is_connected and self.channel_connected
 
@@ -665,15 +663,13 @@ class spaclient:
                 crc ^= 0x07
         return crc ^ 0x02
 
-    def read_msg(self):
+    async def read_msg(self):
         self.l.acquire()
 
         try:
-            len_chunk = self.s.recv(2)
+            len_chunk = await self.reader.readexactly(2)
         except IOError as e:
             # _LOGGER.info("1. read_msg - e.errno = %s", e) #Validation point
-            if e.errno != 11:
-                self.get_socket()
             self.l.release()
             return True
 
@@ -695,7 +691,7 @@ class spaclient:
             return True
 
         try:
-            chunk = self.s.recv(length)
+            chunk = await self.reader.readexactly(length)
         except IOError as e:
             # _LOGGER.info("4. read_msg - e.errno = %s", e) #Validation point
             if e.errno != 11:
@@ -718,12 +714,14 @@ class spaclient:
                     if self.channel_id[0] > 0x2F:
                         self.channel_id = bytes([0x2F])
 
-                    self.send_message(self.channel_id + b"\xbf\x03", bytes([]), True)
+                    await self.send_message_sync(
+                        self.channel_id + b"\xbf\x03", bytes([])
+                    )
 
                 if chunk[0] == 0xFE and chunk[2] == 0:
                     _LOGGER.info("New client request. Requesting channel")
 
-                    self.send_message(b"\xfe\xbf\x01", b"\x02\xf1\x73", True)
+                    await self.send_message_sync(b"\xfe\xbf\x01", b"\x02\xf1\x73")
             if chunk[0:3] == b"\xff\xaf\x13" and (
                 (
                     self.configuration_loaded
@@ -790,7 +788,9 @@ class spaclient:
                     self.channel_connected = True
                     if self.queue:
                         message = self.queue.pop()
-                        self.write(message)
+                        self.writer.write(message)
+                        # TODO: highwatermark
+                        await self.writer.drain()
                         return True
 
         return True
@@ -798,12 +798,11 @@ class spaclient:
     async def read_all_msg(self):
         while True:
             try:
-                self.read_msg()
+                await self.read_msg()
             except Exception:
                 _LOGGER.exception("Read message error")
-            await asyncio.sleep(0)
 
-    def send_message(self, message_type, payload, ignore_queue=False):
+    def send_message(self, message_type, payload):
         length = 5 + len(payload)
         checksum = self.compute_checksum(
             length - 1, bytes([length]) + message_type + payload
@@ -818,29 +817,39 @@ class spaclient:
             + prefix
         )
 
-        if ignore_queue:
-            self.write(message)
-        else:
-            self.queue.append(message)
+        self.queue.append(message)
 
-    def write(self, message):
-        try:
-            # _LOGGER.info("send_message : %s", message) #Validation point
-            self.s.send(message)
-        except IOError as e:
-            # _LOGGER.info("send_message - IOError = %s", e) #Validation point
-            if e.errno != 11:
-                self.get_socket()
+    async def send_message_sync(self, message_type, payload):
+        length = 5 + len(payload)
+        checksum = self.compute_checksum(
+            length - 1, bytes([length]) + message_type + payload
+        )
+        prefix = b"\x7e"
+        message = (
+            prefix
+            + bytes([length])
+            + message_type
+            + payload
+            + bytes([checksum])
+            + prefix
+        )
+
+        self.writer.write(message)
+        await self.writer.drain()
+
+    async def write(self, message):
+        # _LOGGER.info("send_message : %s", message) #Validation point
+        self.writer.write(message)
+        await self.writer.drain()
 
     async def get_channel(self):
         while not self.channel_connected:
-            self.read_msg()
+            await self.read_msg()
 
     async def send_module_identification_request(self):
         self.send_message(self.channel_id + b"\xbf\x04", bytes([]))
         while self.module_identification_loaded == False:
-            self.read_msg()
-            await asyncio.sleep(0)
+            await self.read_msg()
 
     async def keep_alive_call(self):
         while True:
@@ -856,8 +865,7 @@ class spaclient:
             temp = round(convert_temperature(temp, TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2)
         self.send_message(self.channel_id + b"\xbf\x20", bytes([int(temp)]))
         while self.set_temp != temp:
-            self.read_msg()
-            await asyncio.sleep(0)
+            await self.read_msg()
 
     async def set_current_time(self):
         now = dt_util.utcnow()
@@ -877,29 +885,25 @@ class spaclient:
     async def send_configuration_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x00" + b"\x00" + b"\x01")
         while self.configuration_loaded == False:
-            self.read_msg()
-            await asyncio.sleep(0)
+            await self.read_msg()
 
     @retry()
     async def send_filter_cycles_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x01" + b"\x00" + b"\x00")
         while self.filter_cycles_loaded == False:
-            self.read_msg()
-            await asyncio.sleep(0)
+            await self.read_msg()
 
     @retry()
     async def send_information_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x02" + b"\x00" + b"\x00")
         while self.information_loaded == False:
-            self.read_msg()
-            await asyncio.sleep(0)
+            await self.read_msg()
 
     @retry()
     async def send_additional_information_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x04" + b"\x00" + b"\x00")
         while self.additional_information_loaded == False:
-            self.read_msg()
-            await asyncio.sleep(0)
+            await self.read_msg()
 
     def send_preferences_request(self):  # Not use yet!
         self.send_message(self.channel_id + b"\xbf\x22", b"\x08" + b"\x00" + b"\x00")
@@ -1020,8 +1024,7 @@ class spaclient:
         self.send_toggle_message(0x51)
 
         while self.heat_mode != value:
-            self.read_msg()
-            await asyncio.sleep(0)
+            await self.read_msg()
 
         self.heat_mode = value
 
@@ -1036,7 +1039,8 @@ class spaclient:
         _LOGGER.info("======================")
         _LOGGER.info("self.is_connected = %s", self.is_connected)
         _LOGGER.info("self.l       = %s", self.l)
-        _LOGGER.info("self.s       = %s", self.s)
+        _LOGGER.info("self.writer       = %s", self.writer)
+        _LOGGER.info("self.reader       = %s", self.reader)
         _LOGGER.info("self.host_ip = %s", self.host_ip)
 
         _LOGGER.info("")
