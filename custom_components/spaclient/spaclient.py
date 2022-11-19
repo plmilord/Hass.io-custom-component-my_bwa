@@ -1009,11 +1009,15 @@ class spaclient:
             return
         self.send_toggle_message(0x3C)
         self.hold_mode = value
-
-    def set_temp_range(self, value):
+    
+    @retry()
+    async def set_temp_range(self, value):
         if self.temp_range == value:
             return
         self.send_toggle_message(0x50)
+
+        while self.temp_range != value:
+            await self.read_msg()
         self.temp_range = value
 
     @retry()

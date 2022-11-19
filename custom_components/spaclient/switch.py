@@ -262,12 +262,12 @@ class HeatMode(SpaClientDevice, SwitchEntity):
 
     async def async_turn_on(self, **kwargs):
         """Send the on command."""
-        self._spaclient.set_heat_mode("Ready")
+        await self._spaclient.set_heat_mode("Ready")
         #_LOGGER.info("Heat Mode changed to %s", self._spaclient.get_heat_mode())
 
     async def async_turn_off(self, **kwargs):
         """Send the off command."""
-        self._spaclient.set_heat_mode("Rest")
+        await self._spaclient.set_heat_mode("Rest")
         #_LOGGER.info("Heat Mode changed to %s", self._spaclient.get_heat_mode())
 
 
@@ -309,12 +309,12 @@ class TempRange(SpaClientDevice, SwitchEntity):
 
     async def async_turn_on(self, **kwargs):
         """Send the on command."""
-        self._spaclient.set_temp_range("High")
+        await self._spaclient.set_temp_range("High")
         #_LOGGER.info("Temperature Range changed to %s", self._spaclient.get_temp_range())
 
     async def async_turn_off(self, **kwargs):
         """Send the off command."""
-        self._spaclient.set_temp_range("Low")
+        await self._spaclient.set_temp_range("Low")
         #_LOGGER.info("Temperature Range changed to %s", self._spaclient.get_temp_range())
 
 
