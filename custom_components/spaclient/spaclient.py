@@ -848,11 +848,13 @@ class spaclient:
     async def get_channel(self):
         while not self.channel_connected:
             await self.read_msg()
+            await asyncio.sleep(0)
 
     async def send_module_identification_request(self):
         self.send_message(self.channel_id + b"\xbf\x04", bytes([]))
         while self.module_identification_loaded == False:
             await self.read_msg()
+            await asyncio.sleep(0)
 
     async def keep_alive_call(self):
         while True:
@@ -869,6 +871,7 @@ class spaclient:
         self.send_message(self.channel_id + b"\xbf\x20", bytes([int(temp)]))
         while self.set_temp != temp:
             await self.read_msg()
+            await asyncio.sleep(0)
 
     async def set_current_time(self):
         now = dt_util.utcnow()
@@ -889,24 +892,28 @@ class spaclient:
         self.send_message(self.channel_id + b"\xbf\x22", b"\x00" + b"\x00" + b"\x01")
         while self.configuration_loaded == False:
             await self.read_msg()
+            await asyncio.sleep(0)
 
     @retry()
     async def send_filter_cycles_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x01" + b"\x00" + b"\x00")
         while self.filter_cycles_loaded == False:
             await self.read_msg()
+            await asyncio.sleep(0)
 
     @retry()
     async def send_information_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x02" + b"\x00" + b"\x00")
         while self.information_loaded == False:
             await self.read_msg()
+            await asyncio.sleep(0)
 
     @retry()
     async def send_additional_information_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x04" + b"\x00" + b"\x00")
         while self.additional_information_loaded == False:
             await self.read_msg()
+            await asyncio.sleep(0)
 
     def send_preferences_request(self):  # Not use yet!
         self.send_message(self.channel_id + b"\xbf\x22", b"\x08" + b"\x00" + b"\x00")
@@ -1021,6 +1028,7 @@ class spaclient:
 
         while self.temp_range != value:
             await self.read_msg()
+            await asyncio.sleep(0)
         self.temp_range = value
 
     @retry()
@@ -1032,6 +1040,7 @@ class spaclient:
 
         while self.heat_mode != value:
             await self.read_msg()
+            await asyncio.sleep(0)
 
         self.heat_mode = value
 
