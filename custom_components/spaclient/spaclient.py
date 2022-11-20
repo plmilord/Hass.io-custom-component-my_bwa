@@ -664,7 +664,7 @@ class spaclient:
         return crc ^ 0x02
 
     async def read_msg(self):
-        acqruired = self.l.acquire(timeout=5)
+        acqruired = self.l.acquire(True, timeout=5)
 
         if not acqruired:
             raise Exception("Could not acquire lock")
