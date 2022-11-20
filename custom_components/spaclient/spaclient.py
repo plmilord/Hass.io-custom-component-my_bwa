@@ -664,8 +664,10 @@ class spaclient:
         return crc ^ 0x02
 
     async def read_msg(self):
-        self.l.acquire()
+        acqruired = self.l.acquire(timeout=5)
 
+        if not acqruired:
+            raise Exception("Could not acquire lock")
         try:
             len_chunk = await self.reader.readexactly(2)
         except IOError as e:
@@ -799,6 +801,7 @@ class spaclient:
         while True:
             try:
                 await self.read_msg()
+                await asyncio.sleep(0.01)
             except Exception:
                 _LOGGER.exception("Read message error")
 
@@ -1009,7 +1012,7 @@ class spaclient:
             return
         self.send_toggle_message(0x3C)
         self.hold_mode = value
-    
+
     @retry()
     async def set_temp_range(self, value):
         if self.temp_range == value:
