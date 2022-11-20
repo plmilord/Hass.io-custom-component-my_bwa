@@ -870,7 +870,6 @@ class spaclient:
             temp = round(convert_temperature(temp, TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2)
         self.send_message(self.channel_id + b"\xbf\x20", bytes([int(temp)]))
         while self.set_temp != temp:
-            await self.read_msg()
             await asyncio.sleep(0)
 
     async def set_current_time(self):
@@ -1027,7 +1026,6 @@ class spaclient:
         self.send_toggle_message(0x50)
 
         while self.temp_range != value:
-            await self.read_msg()
             await asyncio.sleep(0)
         self.temp_range = value
 
@@ -1039,7 +1037,6 @@ class spaclient:
         self.send_toggle_message(0x51)
 
         while self.heat_mode != value:
-            await self.read_msg()
             await asyncio.sleep(0)
 
         self.heat_mode = value
