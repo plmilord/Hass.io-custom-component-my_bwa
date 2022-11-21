@@ -144,7 +144,7 @@ class spaclient:
             self.reader = None
             return False
 
-        with timeout(5):
+        async with timeout(5):
             while not self.channel_connected:
                 await self.read_msg()
 
@@ -664,7 +664,7 @@ class spaclient:
         return crc ^ 0x02
 
     async def read_msg(self):
-        acqruired = self.l.acquire(True, timeout=5)
+        acqruired = self.l.acquire(True, 5)
 
         if not acqruired:
             raise Exception("Could not acquire lock")
@@ -845,16 +845,10 @@ class spaclient:
         self.writer.write(message)
         await self.writer.drain()
 
-    async def get_channel(self):
-        while not self.channel_connected:
-            await self.read_msg()
-            await asyncio.sleep(0)
-
     async def send_module_identification_request(self):
         self.send_message(self.channel_id + b"\xbf\x04", bytes([]))
         while self.module_identification_loaded == False:
-            await self.read_msg()
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.05)
 
     async def keep_alive_call(self):
         while True:
@@ -870,7 +864,7 @@ class spaclient:
             temp = round(convert_temperature(temp, TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2)
         self.send_message(self.channel_id + b"\xbf\x20", bytes([int(temp)]))
         while self.set_temp != temp:
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.05)
 
     async def set_current_time(self):
         now = dt_util.utcnow()
@@ -890,29 +884,25 @@ class spaclient:
     async def send_configuration_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x00" + b"\x00" + b"\x01")
         while self.configuration_loaded == False:
-            await self.read_msg()
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.05)
 
     @retry()
     async def send_filter_cycles_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x01" + b"\x00" + b"\x00")
         while self.filter_cycles_loaded == False:
-            await self.read_msg()
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.05)
 
     @retry()
     async def send_information_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x02" + b"\x00" + b"\x00")
         while self.information_loaded == False:
-            await self.read_msg()
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.05)
 
     @retry()
     async def send_additional_information_request(self):
         self.send_message(self.channel_id + b"\xbf\x22", b"\x04" + b"\x00" + b"\x00")
         while self.additional_information_loaded == False:
-            await self.read_msg()
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.05)
 
     def send_preferences_request(self):  # Not use yet!
         self.send_message(self.channel_id + b"\xbf\x22", b"\x08" + b"\x00" + b"\x00")
@@ -1026,7 +1016,7 @@ class spaclient:
         self.send_toggle_message(0x50)
 
         while self.temp_range != value:
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.05)
         self.temp_range = value
 
     @retry()
@@ -1037,7 +1027,7 @@ class spaclient:
         self.send_toggle_message(0x51)
 
         while self.heat_mode != value:
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.05)
 
         self.heat_mode = value
 

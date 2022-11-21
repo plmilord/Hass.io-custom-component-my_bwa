@@ -76,6 +76,8 @@ async def async_setup_entry(hass, config_entry):
         _LOGGER.error("Failed to connect to spa at %s", conf[CONF_HOST])
         raise ConfigEntryNotReady
 
+    hass.loop.create_task(spa.read_all_msg())
+
     await spa.send_configuration_request()
     await spa.send_information_request()
     await spa.send_additional_information_request()
@@ -83,7 +85,6 @@ async def async_setup_entry(hass, config_entry):
 
     await update_listener(hass, config_entry)
 
-    hass.loop.create_task(spa.read_all_msg())
     hass.loop.create_task(spa.keep_alive_call())
 
     for component in SPACLIENT_COMPONENTS:
