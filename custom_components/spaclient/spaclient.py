@@ -4,11 +4,11 @@ import socket
 from async_timeout import timeout
 
 import homeassistant.util.dt as dt_util
+from homeassistant.util.unit_conversion import TemperatureConverter
 
 # Import the device class from the component that you want to support
 from .const import _LOGGER
 from homeassistant.const import TEMP_CELSIUS, TEMP_FAHRENHEIT
-from homeassistant.util.temperature import convert as convert_temperature
 from threading import Lock
 from collections import deque
 
@@ -861,7 +861,7 @@ class spaclient:
     @retry()
     async def set_temperature(self, temp):
         if self.temp_scale == "Celsius":
-            temp = round(convert_temperature(temp, TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2)
+            temp = round(TemperatureConverter.convert(temp, TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2)
         self.send_message(self.channel_id + b"\xbf\x20", bytes([int(temp)]))
         while self.set_temp != temp:
             await asyncio.sleep(0.05)
