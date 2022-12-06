@@ -1,8 +1,8 @@
 {
   "domain": "spaclient",
   "name": "Spa Client",
-  "version": 2.0,
-  "documentation": "https://github.com/plmilord/Hass.io-custom-component-spaclient/blob/master/README.md",
+  "version": 2.6,
+  "documentation": "https://github.com/plmilord/Hass.io-custom-component-spaclient",
   "issue_tracker": "https://github.com/plmilord/Hass.io-custom-component-spaclient/issues",
   "codeowners": ["jmoor3", "plmilord"],
   "config_flow": true
