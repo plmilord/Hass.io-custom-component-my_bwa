@@ -1,5 +1,6 @@
 {
     "config": {
+        "title": "Spa Client",
         "abort": {
             "already_configured": "Device is already configured"
         },
@@ -9,12 +10,13 @@
         },
         "step": {
             "user": {
+                "title": "Connect to the bwa Wi-Fi Module",
                 "data": {
                     "host": "Host",
                     "name": "Name"
-                },
+                }
             }
-        },
+        }
     },
     "options": {
         "step": {
