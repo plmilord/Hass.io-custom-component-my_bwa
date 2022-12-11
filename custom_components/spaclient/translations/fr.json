@@ -1,6 +1,5 @@
 {
     "config": {
-        "title": "Spa Client",
         "abort": {
             "already_configured": "Le p\u00e9riph\u00e9rique est d\u00e9j\u00e0 configur\u00e9"
         },
@@ -10,7 +9,6 @@
         },
         "step": {
             "user": {
-                "title": "Connexion au module Wi-Fi bwa",
                 "data": {
                     "host": "Nom de l'h\u00f4te ou adresse IP",
                     "name": "Nom"
