@@ -20,7 +20,7 @@
         "step": {
             "init": {
                 "data": {
-                    "scan_interval": "Avstemningsfrekvens for verdier (sekunder)"
+                    "scan_interval": "Avstemningsfrekvens for verdier (sekunder)",
                     "sync_time": "Hold Balboa BP kontrollerens tid synkronisert med Home Assistant"
                 }
             }
