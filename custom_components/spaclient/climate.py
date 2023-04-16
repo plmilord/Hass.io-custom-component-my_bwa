@@ -101,14 +101,22 @@ class SpaThermostat(SpaClientDevice, ClimateEntity):
     def min_temp(self):
         """Return the minimum temperature."""
         if self._spaclient.get_temp_range() == "High":
+            if self.hass.config.units.temperature_unit == TEMP_CELSIUS:
+                return round(TemperatureConverter.convert(self._spaclient.get_high_range_min(), TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2) / 2
             return TemperatureConverter.convert(self._spaclient.get_high_range_min(), TEMP_FAHRENHEIT, self.temperature_unit)
+        if self.hass.config.units.temperature_unit == TEMP_CELSIUS:
+            return round(TemperatureConverter.convert(self._spaclient.get_low_range_min(), TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2) / 2
         return TemperatureConverter.convert(self._spaclient.get_low_range_min(), TEMP_FAHRENHEIT, self.temperature_unit)
 
     @property
     def max_temp(self):
         """Return the maximum temperature."""
         if self._spaclient.get_temp_range() == "High":
+            if self.hass.config.units.temperature_unit == TEMP_CELSIUS:
+                return round(TemperatureConverter.convert(self._spaclient.get_high_range_max(), TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2) / 2
             return TemperatureConverter.convert(self._spaclient.get_high_range_max(), TEMP_FAHRENHEIT, self.temperature_unit)
+        if self.hass.config.units.temperature_unit == TEMP_CELSIUS:
+            return round(TemperatureConverter.convert(self._spaclient.get_low_range_max(), TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2) / 2
         return TemperatureConverter.convert(self._spaclient.get_low_range_max(), TEMP_FAHRENHEIT, self.temperature_unit)
 
     @property
