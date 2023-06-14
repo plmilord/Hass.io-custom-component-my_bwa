@@ -74,15 +74,15 @@ class spaclient:
         self.module_identification_loaded = False
 
         """ Filter cycles variables """
-        self.filter1_hour = 0
-        self.filter1_minute = 0
-        self.filter1_duration_hours = 0
-        self.filter1_duration_minutes = 0
+        self.filter1_begins_hour = 0
+        self.filter1_begins_minute = 0
+        self.filter1_runs_hour = 0
+        self.filter1_runs_minute = 0
         self.filter2_enabled = 0
-        self.filter2_hour = 0
-        self.filter2_minute = 0
-        self.filter2_duration_hours = 0
-        self.filter2_duration_minutes = 0
+        self.filter2_begins_hour = 0
+        self.filter2_begins_minute = 0
+        self.filter2_runs_hour = 0
+        self.filter2_runs_minute = 0
         self.filter_cycles_loaded = False
 
         """ Additional information variables """
@@ -235,26 +235,26 @@ class spaclient:
         MS ML MT MT MT   1H 1M 1D 1E 2H 2M 2D 2E   CS ME
         7E 0D 0A BF 23                                7E
 
-        1H: Filter 1 start hour (always 0-24)
-        1M: Filter 1 start minute
-        1D: Filter 1 duration hours
-        1E: Filter 1 duration minutes
-        2H: Filter 2 start hour, masking out the high order bit, which is used as an enable/disable flag
-        2M: Filter 2 start minute
-        2D: Filter 2 duration hours
-        2E: Filter 2 duration minutes
+        1H: Filter 1 begins hour (always 0-24)
+        1M: Filter 1 begins minute
+        1D: Filter 1 runs hour
+        1E: Filter 1 runs minute
+        2H: Filter 2 begins hour, masking out the high order bit, which is used as an enable/disable flag
+        2M: Filter 2 begins minute
+        2D: Filter 2 runs hour
+        2E: Filter 2 runs minute
 
         """
 
-        self.filter1_hour = byte_array[0]
-        self.filter1_minute = byte_array[1]
-        self.filter1_duration_hours = byte_array[2]
-        self.filter1_duration_minutes = byte_array[3]
+        self.filter1_begins_hour = byte_array[0]
+        self.filter1_begins_minute = byte_array[1]
+        self.filter1_runs_hour = byte_array[2]
+        self.filter1_runs_minute = byte_array[3]
         self.filter2_enabled = byte_array[4] >> 7
-        self.filter2_hour = byte_array[4] ^ (self.filter2_enabled << 7)
-        self.filter2_minute = byte_array[5]
-        self.filter2_duration_hours = byte_array[6]
-        self.filter2_duration_minutes = byte_array[7]
+        self.filter2_begins_hour = byte_array[4] ^ (self.filter2_enabled << 7)
+        self.filter2_begins_minute = byte_array[5]
+        self.filter2_runs_hour = byte_array[6]
+        self.filter2_runs_minute = byte_array[7]
 
         self.filter_cycles_loaded = True
 
@@ -561,30 +561,51 @@ class spaclient:
     def get_gateway_status(self):
         return self.is_connected
 
-    def get_filter2_enabled(self):
-        return self.filter2_enabled
+    def get_filter_begins_hour(self, filter_num):
+        if filter_num == 1:
+            return self.filter1_begins_hour
+        else:
+            return self.filter2_begins_hour
+
+    def get_filter_begins_minute(self, filter_num):
+        if filter_num == 1:
+            return self.filter1_begins_minute
+        else:
+            return self.filter2_begins_minute
+
+    def get_filter_runs_hour(self, filter_num):
+        if filter_num == 1:
+            return self.filter1_runs_hour
+        else:
+            return self.filter2_runs_hour
+
+    def get_filter_runs_minute(self, filter_num):
+        if filter_num == 1:
+            return self.filter1_runs_minute
+        else:
+            return self.filter2_runs_minute
 
     def get_filter_begins(self, filter_num):
         if filter_num == 1:
-            return "%02d:%02d" % (self.filter1_hour, self.filter1_minute)
+            return "%02d:%02d" % (self.filter1_begins_hour, self.filter1_begins_minute)
         else:
-            return "%02d:%02d" % (self.filter2_hour, self.filter2_minute)
+            return "%02d:%02d" % (self.filter2_begins_hour, self.filter2_begins_minute)
 
     def get_filter_runs(self, filter_num):
         if filter_num == 1:
-            return f"{self.filter1_duration_hours} hours | {self.filter1_duration_minutes} minutes"
+            return f"{self.filter1_runs_hour} hours | {self.filter1_runs_minute} minutes"
         else:
-            return f"{self.filter2_duration_hours} hours | {self.filter2_duration_minutes} minutes"
+            return f"{self.filter2_runs_hour} hours | {self.filter2_runs_minute} minutes"
 
     def get_filter_ends(self, filter_num):
         if filter_num == 1:
-            if self.filter1_hour + self.filter1_duration_hours >= 24:
-                return "%02d:%02d" % (self.filter1_hour + self.filter1_duration_hours - 24, self.filter1_minute + self.filter1_duration_minutes)
-            return "%02d:%02d" % (self.filter1_hour + self.filter1_duration_hours, self.filter1_minute + self.filter1_duration_minutes)
+            if self.filter1_begins_hour + self.filter1_runs_hour >= 24:
+                return "%02d:%02d" % (self.filter1_begins_hour + self.filter1_runs_hour - 24, self.filter1_begins_minute + self.filter1_runs_minute)
+            return "%02d:%02d" % (self.filter1_begins_hour + self.filter1_runs_hour, self.filter1_begins_minute + self.filter1_runs_minute)
         else:
-            if self.filter2_hour + self.filter2_duration_hours >= 24:
-                return "%02d:%02d" % (self.filter2_hour + self.filter2_duration_hours - 24, self.filter2_minute + self.filter2_duration_minutes)
-            return "%02d:%02d" % (self.filter2_hour + self.filter2_duration_hours, self.filter2_minute + self.filter2_duration_minutes)
+            if self.filter2_begins_hour + self.filter2_runs_hour >= 24:
+                return "%02d:%02d" % (self.filter2_begins_hour + self.filter2_runs_hour - 24, self.filter2_begins_minute + self.filter2_runs_minute)
+            return "%02d:%02d" % (self.filter2_begins_hour + self.filter2_runs_hour, self.filter2_begins_minute + self.filter2_runs_minute)
 
     def get_filter_mode(self, filter_num):
         if filter_num == 1:
@@ -594,6 +615,9 @@ class spaclient:
             if self.filter_mode == 2 or self.filter_mode == 3:
                 return True
         return False
+
+    def get_filter2_enabled(self):
+        return self.filter2_enabled
 
     def compute_checksum(self, length, payload):
         crc = 0xb5
@@ -772,14 +796,14 @@ class spaclient:
 
     def send_filter_cycle_config(self): #Not use yet!
         self.send_message(b'\x0a\xbf\x23',
-            bytes([self.filter1_hour]) +
-            bytes([self.filter1_minute]) +
-            bytes([self.filter1_duration_hours]) +
-            bytes([self.filter1_duration_minutes]) +
-            bytes([int(self.filter2_enabled << 7) + self.filter2_hour]) +
-            bytes([self.filter2_minute]) +
-            bytes([self.filter2_duration_hours]) +
-            bytes([self.filter2_duration_minutes])
+            bytes([self.filter1_begins_hour]) +
+            bytes([self.filter1_begins_minute]) +
+            bytes([self.filter1_runs_hour]) +
+            bytes([self.filter1_runs_minute]) +
+            bytes([int(self.filter2_enabled << 7) + self.filter2_begins_hour]) +
+            bytes([self.filter2_begins_minute]) +
+            bytes([self.filter2_runs_hour]) +
+            bytes([self.filter2_runs_minute])
         )
 
     def set_temperature_scale(self, temperature_scale): #Not use yet!
@@ -877,6 +901,24 @@ class spaclient:
         self.send_toggle_message(0x51)
         self.heat_mode = value
 
+    def set_filter_cycle_begins_time(self, filter_num, value):
+        if filter_num == 1:
+            self.filter1_begins_hour = value.hour
+            self.filter1_begins_minute = value.minute
+        if filter_num == 2:
+            self.filter2_begins_hour = value.hour
+            self.filter2_begins_minute = value.minute
+        self.send_filter_cycle_config()
+
+    def set_filter_cycle_runs_time(self, filter_num, value):
+        if filter_num == 1:
+            self.filter1_runs_hour = value.hour
+            self.filter1_runs_minute = value.minute
+        if filter_num == 2:
+            self.filter2_runs_hour = value.hour
+            self.filter2_runs_minute = value.minute
+        self.send_filter_cycle_config()
+
     def set_filter2_enabled(self, value):
         self.filter2_enabled = value
         self.send_filter_cycle_config()
@@ -960,15 +1002,15 @@ class spaclient:
         _LOGGER.info("<< Filter cycles variables >>")
         _LOGGER.info("=============================")
         _LOGGER.info("self.filter_cycles_loaded = %s", self.filter_cycles_loaded)
-        _LOGGER.info("self.filter1_hour             = %s", self.filter1_hour)
-        _LOGGER.info("self.filter1_minute           = %s", self.filter1_minute)
-        _LOGGER.info("self.filter1_duration_hours   = %s", self.filter1_duration_hours)
-        _LOGGER.info("self.filter1_duration_minutes = %s", self.filter1_duration_minutes)
-        _LOGGER.info("self.filter2_enabled          = %s", self.filter2_enabled)
-        _LOGGER.info("self.filter2_hour             = %s", self.filter2_hour)
-        _LOGGER.info("self.filter2_minute           = %s", self.filter2_minute)
-        _LOGGER.info("self.filter2_duration_hours   = %s", self.filter2_duration_hours)
-        _LOGGER.info("self.filter2_duration_minutes = %s", self.filter2_duration_minutes)
+        _LOGGER.info("self.filter1_begins_hour   = %s", self.filter1_begins_hour)
+        _LOGGER.info("self.filter1_begins_minute = %s", self.filter1_begins_minute)
+        _LOGGER.info("self.filter1_runs_hour     = %s", self.filter1_runs_hour)
+        _LOGGER.info("self.filter1_runs_minute   = %s", self.filter1_runs_minute)
+        _LOGGER.info("self.filter2_enabled       = %s", self.filter2_enabled)
+        _LOGGER.info("self.filter2_begins_hour   = %s", self.filter2_begins_hour)
+        _LOGGER.info("self.filter2_begins_minute = %s", self.filter2_begins_minute)
+        _LOGGER.info("self.filter2_runs_hour     = %s", self.filter2_runs_hour)
+        _LOGGER.info("self.filter2_runs_minute   = %s", self.filter2_runs_minute)
 
         _LOGGER.info("")
         _LOGGER.info("======================================")
