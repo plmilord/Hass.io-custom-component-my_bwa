@@ -56,8 +56,12 @@ Auxiliary 1 | Switch | ? | N/A
 Auxiliary 2 | Switch | ? | N/A
 Blower | Switch | ✓ | Off, On
 Circulation Pump | Binary sensor | ✓ | False, True
+Filter Cycle 1 Begins | Time | ✓ | N/A
+Filter Cycle 1 Runs | Time | ✓ | N/A
 Filter Cycle 1 Status | Binary sensor | ✓ | Begins, Runs, Ends
 Filter Cycle 2 | Switch | ✓ | 0, 1
+Filter Cycle 2 Begins | Time | ✓ | N/A
+Filter Cycle 2 Runs | Time | ✓ | N/A
 Filter Cycle 2 Status | Binary sensor | ✓ | Begins, Runs, Ends
 Heat Mode | Switch | ✓ | Ready, Rest, Ready in Rest
 Light 1 | Light | ✓ | False, True
@@ -88,7 +92,7 @@ Time sync with Home Assistant | ✓
 - [x] Allow the installation of this custom component through HACS
 - [ ] Bring back the ability to configure this custom component via the entries in configuration.yaml
 - [x] Investigate why it takes so long to load the component on an RPi (~2s on docker; ~85s on RPi3)
-- [ ] Add programming capability for filter cycles
+- [x] Add programming capability for filter cycles
 - [ ] Change the way I update entities (from polling mode to subscribing to updates)
 - [ ] Customize entity IDs with **Spa Client** custom name to allow multiple integrations in the same Home Assistant instance
 - [ ] Manage the availability of entities while not connected
