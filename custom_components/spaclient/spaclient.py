@@ -706,6 +706,17 @@ class spaclient:
         if len(chunk) != length:
             return True
 
+        data = chunk[:-2]
+
+        message = bytes([length]) + data
+        crc = chunk[-2]
+
+        calculated_crc = self.compute_checksum(len(message), message)
+
+        if crc != calculated_crc:
+            _LOGGER.warning("Invalid CRC %s", chunk.hex())
+            return True
+
         if chunk != self.status_chunk_array:
             if not self.channel_connected or not self.channel_id:
                 if chunk[0] == 0xFE and chunk[2] == 2:
