@@ -12,11 +12,9 @@
                 "data": {
                     "host": "Nom de l'h\u00f4te ou adresse IP",
                     "name": "Nom"
-                },
-                "title": "Connexion au module Wi-Fi bwa"
+                }
             }
-        },
-        "title": "Spa Client"
+        }
     },
     "options": {
         "step": {

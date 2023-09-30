@@ -3,8 +3,7 @@
 from . import SpaClientDevice
 from .const import _LOGGER, DOMAIN, ICONS, SPA
 from homeassistant.components.climate import ClimateEntity
-from homeassistant.components.climate.const import (
-    SUPPORT_TARGET_TEMPERATURE, HVAC_MODE_HEAT, HVAC_MODE_OFF)
+from homeassistant.components.climate.const import SUPPORT_TARGET_TEMPERATURE, HVAC_MODE_HEAT, HVAC_MODE_OFF
 from homeassistant.const import ATTR_TEMPERATURE, TEMP_CELSIUS, TEMP_FAHRENHEIT
 from homeassistant.util.unit_conversion import TemperatureConverter
 

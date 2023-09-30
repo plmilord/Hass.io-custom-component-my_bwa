@@ -6,6 +6,7 @@ CONF_SYNC_TIME = "sync_time"
 DATA_LISTENER = "listener"
 DEFAULT_SCAN_INTERVAL = 1
 DOMAIN = "spaclient"
+FILTER_CYCLE_TIMES = ["Begins", "Runs"]
 MIN_SCAN_INTERVAL = 1
 SPA = "spa"
 CONF_CHANNEL = "channel"
@@ -15,6 +16,7 @@ SPACLIENT_COMPONENTS = [
     "climate",
     "light",
     "switch",
+    "time",
 ]
 
 ICONS = {
