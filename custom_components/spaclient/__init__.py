@@ -1,6 +1,5 @@
-"""The Spa Client integration."""
+"""Init file for Spa Client integration."""
 import asyncio
-
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 
@@ -128,7 +127,6 @@ class SpaClientDevice(Entity):
         """Initialize the Spa Client device."""
         self._device_name = config_entry.data[CONF_NAME]
         self._spaclient = spaclient
-        self._unique_id = "Spa Client"
 
     async def async_added_to_hass(self):
         """Register state update callback."""
@@ -141,13 +139,13 @@ class SpaClientDevice(Entity):
     @property
     def unique_id(self):
         """Return a unique ID."""
-        return self._unique_id
+        return f"{self._spaclient.get_macaddr().replace(':', '')}#spa_client"
 
     @property
     def device_info(self):
         """Return the device information for this entity."""
         return {
-            "identifiers": {(DOMAIN, self._spaclient.get_macaddr())},
+            "identifiers": {(DOMAIN, self._spaclient.get_macaddr().replace(':', ''))},
             "model": self._spaclient.get_model_name(),
             "manufacturer": "Balboa Water Group",
             "name": self._device_name,

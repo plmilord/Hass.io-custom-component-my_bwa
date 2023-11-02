@@ -1,11 +1,11 @@
+"""Spa Client integration."""
 import asyncio
-import socket
-
 import homeassistant.util.dt as dt_util
+import socket
 
 # Import the device class from the component that you want to support
 from .const import _LOGGER
-from homeassistant.const import TEMP_CELSIUS, TEMP_FAHRENHEIT
+from homeassistant.const import UnitOfTemperature
 from homeassistant.util.unit_conversion import TemperatureConverter
 from threading import Lock
 
@@ -754,7 +754,7 @@ class spaclient:
 
     async def set_temperature(self, temp):
         if self.temp_scale == "Celsius":
-            temp = round(TemperatureConverter.convert(temp, TEMP_FAHRENHEIT, TEMP_CELSIUS) * 2)
+            temp = round(TemperatureConverter.convert(temp, UnitOfTemperature.FAHRENHEIT, UnitOfTemperature.CELSIUS) * 2)
         self.send_message(b'\x0a\xbf\x20', bytes([int(temp)]))
 
     async def set_current_time(self):
@@ -932,7 +932,7 @@ class spaclient:
         _LOGGER.info("self.l       = %s", self.l)
         _LOGGER.info("self.s       = %s", self.s)
         _LOGGER.info("self.host_ip = %s", self.host_ip)
-        
+
         _LOGGER.info("")
         _LOGGER.info("=============================")
         _LOGGER.info("<< Status update variables >>")

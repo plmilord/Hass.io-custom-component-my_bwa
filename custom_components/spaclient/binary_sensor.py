@@ -40,7 +40,7 @@ class CircPump(SpaClientDevice, BinarySensorEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return 'Circulation Pump'
+        return f"{self._spaclient.get_macaddr().replace(':', '')}#circulation_pump"
 
     @property
     def device_class(self):
@@ -62,6 +62,11 @@ class CircPump(SpaClientDevice, BinarySensorEntity):
         """Return the state of the binary sensor."""
         return self._spaclient.get_circ_pump()
 
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._spaclient.get_gateway_status()
+
 
 class FilterCycle(SpaClientDevice, BinarySensorEntity):
     """Representation of an Auxiliary switch."""
@@ -77,7 +82,7 @@ class FilterCycle(SpaClientDevice, BinarySensorEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return 'Filter Cycle ' + str(self._filter_num) + ' Status'
+        return f"{self._spaclient.get_macaddr().replace(':', '')}#filter_cycle_{str(self._filter_num)}_status"
 
     @property
     def device_class(self):
@@ -108,6 +113,11 @@ class FilterCycle(SpaClientDevice, BinarySensorEntity):
         """Get whether the switch is in on state."""
         return self._spaclient.get_filter_mode(self._filter_num)
 
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._spaclient.get_gateway_status()
+
 
 class SpaGateway(SpaClientDevice, BinarySensorEntity):
     """Representation of a binary sensor."""
@@ -121,7 +131,7 @@ class SpaGateway(SpaClientDevice, BinarySensorEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return 'bwa Wi-Fi Module'
+        return f"{self._spaclient.get_macaddr().replace(':', '')}#bwa_wi_fi_module"
 
     @property
     def device_class(self):
@@ -136,4 +146,9 @@ class SpaGateway(SpaClientDevice, BinarySensorEntity):
     @property
     def is_on(self):
         """Return the state of the binary sensor."""
+        return self._spaclient.get_gateway_status()
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
         return self._spaclient.get_gateway_status()

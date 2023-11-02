@@ -35,7 +35,7 @@ class SpaLight(SpaClientDevice, LightEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return 'Light ' + str(self._light_num)
+        return f"{self._spaclient.get_macaddr().replace(':', '')}#light_{str(self._light_num)}"
 
     @property
     def name(self):
@@ -57,3 +57,8 @@ class SpaLight(SpaClientDevice, LightEntity):
         """Instruct the light to turn off."""
         #_LOGGER.info("Turning Off Light %s", self._light_num)
         self._spaclient.set_light(self._light_num, False)
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._spaclient.get_gateway_status()

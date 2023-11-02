@@ -35,9 +35,9 @@ class FilterCycle(SpaClientDevice, TimeEntity):
     def unique_id(self) -> str:
         """Return a unique ID."""
         if self._cycle_times == 'Begins':
-            return 'Filter Cycle ' + str(self._filter_num) + ' Begins'
+            return f"{self._spaclient.get_macaddr().replace(':', '')}#filter_cycle_{str(self._filter_num)}_begins"
         if self._cycle_times == 'Runs':
-            return 'Filter Cycle ' + str(self._filter_num) + ' Runs'
+            return f"{self._spaclient.get_macaddr().replace(':', '')}#filter_cycle_{str(self._filter_num)}_runs"
 
     @property
     def name(self):
@@ -61,3 +61,8 @@ class FilterCycle(SpaClientDevice, TimeEntity):
             return self._spaclient.set_filter_cycle_begins_time(self._filter_num, value)
         if self._cycle_times == 'Runs':
             return self._spaclient.set_filter_cycle_runs_time(self._filter_num, value)
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._spaclient.get_gateway_status()

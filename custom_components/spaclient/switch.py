@@ -50,7 +50,7 @@ class SpaPump(SpaClientDevice, SwitchEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return 'Pump ' + str(self._pump_num)
+        return f"{self._spaclient.get_macaddr().replace(':', '')}#pump_{str(self._pump_num)}"
 
     @property
     def name(self):
@@ -95,6 +95,11 @@ class SpaPump(SpaClientDevice, SwitchEntity):
 
         self._spaclient.set_pump(self._pump_num, "Off")
 
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._spaclient.get_gateway_status()
+
 
 class Blower(SpaClientDevice, SwitchEntity):
     """Representation of a Blower switch."""
@@ -108,7 +113,7 @@ class Blower(SpaClientDevice, SwitchEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return 'Blower'
+        return f"{self._spaclient.get_macaddr().replace(':', '')}#blower"
 
     @property
     def name(self):
@@ -142,6 +147,11 @@ class Blower(SpaClientDevice, SwitchEntity):
         self._spaclient.set_blower("Off")
         #_LOGGER.info("Blower changed to %s", self._spaclient.get_blower())
 
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._spaclient.get_gateway_status()
+
 
 class Mister(SpaClientDevice, SwitchEntity):
     """Representation of a Mister switch."""
@@ -155,7 +165,7 @@ class Mister(SpaClientDevice, SwitchEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return 'Mister'
+        return f"{self._spaclient.get_macaddr().replace(':', '')}#mister"
 
     @property
     def name(self):
@@ -182,6 +192,11 @@ class Mister(SpaClientDevice, SwitchEntity):
         #_LOGGER.info("Turning Off Mister")
         self._spaclient.set_mister("Off")
 
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._spaclient.get_gateway_status()
+
 
 class SpaAux(SpaClientDevice, SwitchEntity):
     """Representation of an Auxiliary switch."""
@@ -196,7 +211,7 @@ class SpaAux(SpaClientDevice, SwitchEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return 'Auxiliary ' + str(self._aux_num)
+        return f"{self._spaclient.get_macaddr().replace(':', '')}#auxiliary_{str(self._aux_num)}"
 
     @property
     def name(self):
@@ -223,6 +238,11 @@ class SpaAux(SpaClientDevice, SwitchEntity):
         #_LOGGER.info("Turning Off Auxiliary %s", self._aux_num)
         self._spaclient.set_aux(self._aux_num, "Off")
 
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._spaclient.get_gateway_status()
+
 
 class HeatMode(SpaClientDevice, SwitchEntity):
     """Representation of a Heat Mode switch."""
@@ -236,7 +256,7 @@ class HeatMode(SpaClientDevice, SwitchEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return 'Heat Mode'
+        return f"{self._spaclient.get_macaddr().replace(':', '')}#heat_mode"
 
     @property
     def name(self):
@@ -270,6 +290,11 @@ class HeatMode(SpaClientDevice, SwitchEntity):
         self._spaclient.set_heat_mode("Rest")
         #_LOGGER.info("Heat Mode changed to %s", self._spaclient.get_heat_mode())
 
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._spaclient.get_gateway_status()
+
 
 class TempRange(SpaClientDevice, SwitchEntity):
     """Representation of a Temperature Range switch."""
@@ -283,7 +308,7 @@ class TempRange(SpaClientDevice, SwitchEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return 'Temperature Range'
+        return f"{self._spaclient.get_macaddr().replace(':', '')}#temperature_range"
 
     @property
     def name(self):
@@ -317,6 +342,11 @@ class TempRange(SpaClientDevice, SwitchEntity):
         self._spaclient.set_temp_range("Low")
         #_LOGGER.info("Temperature Range changed to %s", self._spaclient.get_temp_range())
 
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._spaclient.get_gateway_status()
+
 
 class EnableFilterCycle2(SpaClientDevice, SwitchEntity):
     """Representation of a Temperature Range switch."""
@@ -330,7 +360,7 @@ class EnableFilterCycle2(SpaClientDevice, SwitchEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID."""
-        return 'Enable Filter Cycle 2'
+        return f"{self._spaclient.get_macaddr().replace(':', '')}#enable_filter_cycle_2"
 
     @property
     def name(self):
@@ -356,3 +386,8 @@ class EnableFilterCycle2(SpaClientDevice, SwitchEntity):
         """Send the off command."""
         #_LOGGER.info("Turning Off Filter Cycle 2")
         self._spaclient.set_filter2_enabled(0)
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        return self._spaclient.get_gateway_status()
