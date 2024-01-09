@@ -87,16 +87,21 @@ Time sync with Home Assistant | ✓
 
 ## Task List
 
-- [x] Create an icon and logo for this custom component
-- [x] Allow the installation of this custom component through the Home Assistant integrations menu (use of config_flow.py)
-- [x] Allow the installation of this custom component through HACS
+### To do
+
 - [ ] Bring back the ability to configure this custom component via the entries in configuration.yaml
-- [x] Investigate why it takes so long to load the component on an RPi (~2s on docker; ~85s on RPi3)
-- [x] Add programming capability for filter cycles
 - [ ] Change the way I update entities (from polling mode to subscribing to updates)
-- [x] Customize entity IDs with **Spa Client** custom name to allow multiple integrations in the same Home Assistant instance
-- [x] Manage the availability of entities while not connected
 - [ ] Implement the other spa messages (fault log, gfi test, etc.)
+
+### Completed
+
+- [x] Add programming capability for filter cycles
+- [x] Allow the installation of this custom component through HACS
+- [x] Allow the installation of this custom component through the Home Assistant integrations menu (use of config_flow.py)
+- [x] Create an icon and logo for this custom component
+- [x] Customize entity IDs with **Spa Client** custom name to allow multiple integrations in the same Home Assistant instance
+- [x] Investigate why it takes so long to load the component on an RPi (~2s on docker; ~85s on RPi3)
+- [x] Manage the availability of entities while not connected
 
 ## Inspiration / Credits
 
