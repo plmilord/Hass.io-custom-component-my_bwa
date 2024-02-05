@@ -2,9 +2,9 @@
 # Import the device class from the component that you want to support
 from . import SpaClientDevice
 from .const import _LOGGER, DOMAIN, ICONS, SPA
+from datetime import timedelta
 from homeassistant.components.switch import SwitchEntity
 
-from datetime import timedelta
 SCAN_INTERVAL = timedelta(seconds=1)
 
 

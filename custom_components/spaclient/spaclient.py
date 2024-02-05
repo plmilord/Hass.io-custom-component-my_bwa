@@ -28,7 +28,7 @@ class spaclient:
         self.hour = 0
         self.minute = 0
         self.heat_mode = "Rest"
-        self.temp_scale = "Farenheit"
+        self.temp_scale = "Fahrenheit"
         self.filter_mode = False
         self.time_scale = "24 Hr"
         self.heating = False
@@ -93,35 +93,35 @@ class spaclient:
         self.nb_of_pumps = 0
         self.additional_information_loaded = False
 
-    def get_socket(self):
-        if self.s is None or self.is_connected == False:
+    async def get_socket(self):
+        if self.s is None:
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.s.setblocking(0)
+            self.s.settimeout(5)
 
         try:
             self.s.connect((self.host_ip, 4257))
-        except socket.error as e:
-            #_LOGGER.info("socket.error = %s", e) #Validation point
-            if e.errno != 115:
-                self.s.close()
-                self.is_connected = False
-                return True
-
-        return True
+            return True
+        except (socket.timeout, socket.error) as e:
+            #_LOGGER.error("Socket connection error: %s", e) #Validation point
+            self.is_connected = False
+            self.s.close()
+            self.s = None
+            return True
 
     async def validate_connection(self):
         count = 0
 
-        self.get_socket()
+        await self.get_socket()
 
-        while count != 20 and self.is_connected != True:
-            self.read_msg()
-            await asyncio.sleep(.1)
-            count += 1
+        if self.s is not None:
+            while count < 20 or self.is_connected == False:
+                self.read_msg()
+                await asyncio.sleep(.1)
+                count += 1
 
-        if self.is_connected == False:
-            self.s.close()
-            self.s = None
+            if self.is_connected == False:
+                self.s.close()
+                self.s = None
 
         return self.is_connected
 
@@ -640,32 +640,32 @@ class spaclient:
 
         try:
             len_chunk = self.s.recv(2)
-        except IOError as e:
-            #_LOGGER.info("1. read_msg - e.errno = %s", e) #Validation point
-            if e.errno != 11:
-                self.get_socket()
+        except (socket.timeout, socket.error) as e:
+            #_LOGGER.error("self.s.recv(2) error = %s", e) #Validation point
+            self.is_connected = False
             self.l.release()
+            self.s.close()
+            self.s = None
             return True
 
         if len_chunk == b'~' or len_chunk == b'' or len(len_chunk) == 0:
-            #_LOGGER.info("2. read_msg - len_chunk = %s ; len(len_chunk) = %s", len_chunk, len(len_chunk)) #Validation point
             self.l.release()
             return True
 
         length = len_chunk[1]
 
         if int(length) == 0:
-            #_LOGGER.info("3. read_msg - int(length) = 0") #Validation point
             self.l.release()
             return True
 
         try:
             chunk = self.s.recv(length)
-        except IOError as e:
-            #_LOGGER.info("4. read_msg - e.errno = %s", e) #Validation point
-            if e.errno != 11:
-                self.get_socket()
+        except (socket.timeout, socket.error) as e:
+            #_LOGGER.error("self.s.recv(length) error = %s", e) #Validation point
+            self.is_connected = False
             self.l.release()
+            self.s.close()
+            self.s = None
             return True
 
         self.l.release()
@@ -722,7 +722,8 @@ class spaclient:
 
     async def read_all_msg(self):
         while True:
-            self.read_msg()
+            if self.s is not None:
+                self.read_msg()
             await asyncio.sleep(.1)
 
     def send_message(self, type, payload):
@@ -734,10 +735,14 @@ class spaclient:
         try:
             #_LOGGER.info("send_message : %s", message) #Validation point
             self.s.send(message)
-        except IOError as e:
-            #_LOGGER.info("send_message - IOError = %s", e) #Validation point
-            if e.errno != 11:
-                self.get_socket()
+            return True
+        except (socket.timeout, socket.error) as e:
+            #_LOGGER.error("self.s.send(message) error = %s", e) #Validation point
+            self.is_connected = False
+            self.l.release()
+            self.s.close()
+            self.s = None
+            return True
 
     async def send_module_identification_request(self):
         self.send_message(b'\x0a\xbf\x04', bytes([]))
@@ -746,7 +751,10 @@ class spaclient:
 
     async def keep_alive_call(self):
         while True:
-            self.send_message(b'\x0a\xbf\x04', bytes([]))
+            if self.s is None:
+                await self.get_socket()
+            else:
+                self.send_message(b'\x0a\xbf\x04', bytes())
             await asyncio.sleep(30)
 
     def send_toggle_message(self, item):

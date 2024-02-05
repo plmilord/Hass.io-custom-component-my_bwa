@@ -63,8 +63,8 @@ async def async_setup_entry(hass, config_entry):
     hass.data[DOMAIN][config_entry.entry_id] = {SPA: spa, DATA_LISTENER: [config_entry.add_update_listener(update_listener)]}
 
     connected = await spa.validate_connection()
+
     if not connected:
-        _LOGGER.error("Failed to connect to spa at %s", config_entry.data[CONF_HOST])
         raise ConfigEntryNotReady
 
     await spa.send_module_identification_request()

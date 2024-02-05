@@ -2,9 +2,9 @@
 # Import the device class from the component that you want to support
 from . import SpaClientDevice
 from .const import _LOGGER, DOMAIN, ICONS, SPA
-from homeassistant.components.binary_sensor import BinarySensorEntity, DEVICE_CLASS_CONNECTIVITY
-
 from datetime import timedelta
+from homeassistant.components.binary_sensor import BinarySensorEntity
+
 SCAN_INTERVAL = timedelta(seconds=1)
 
 
@@ -21,8 +21,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     for i in range(0, 2):
         entities.append(FilterCycle(i + 1, spaclient, config_entry))
-
-    entities.append(SpaGateway(spaclient, config_entry))
 
     async_add_entities(entities, True)
 
@@ -112,41 +110,6 @@ class FilterCycle(SpaClientDevice, BinarySensorEntity):
     def is_on(self):
         """Get whether the switch is in on state."""
         return self._spaclient.get_filter_mode(self._filter_num)
-
-    @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
-        return self._spaclient.get_gateway_status()
-
-
-class SpaGateway(SpaClientDevice, BinarySensorEntity):
-    """Representation of a binary sensor."""
-
-    def __init__(self, spaclient, config_entry):
-        """Initialize the device."""
-        super().__init__(spaclient, config_entry)
-        self._spaclient = spaclient
-        self._sensor_type = DEVICE_CLASS_CONNECTIVITY
-
-    @property
-    def unique_id(self) -> str:
-        """Return a unique ID."""
-        return f"{self._spaclient.get_macaddr().replace(':', '')}#bwa_wi_fi_module"
-
-    @property
-    def device_class(self):
-        """Return the class of this binary sensor."""
-        return self._sensor_type
-
-    @property
-    def name(self):
-        """Return the name of the binary sensor."""
-        return 'bwa Wi-Fi Module'
-
-    @property
-    def is_on(self):
-        """Return the state of the binary sensor."""
-        return self._spaclient.get_gateway_status()
 
     @property
     def available(self) -> bool:

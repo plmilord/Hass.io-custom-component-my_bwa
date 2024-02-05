@@ -2,16 +2,14 @@
 # Import the device class from the component that you want to support
 from . import SpaClientDevice
 from .const import _LOGGER, DOMAIN, ICONS, SPA
-from homeassistant.components.climate import ClimateEntity
-from homeassistant.components.climate.const import SUPPORT_TARGET_TEMPERATURE, HVAC_MODE_HEAT, HVAC_MODE_OFF
+from datetime import timedelta
+from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.util.unit_conversion import TemperatureConverter
 
-from datetime import timedelta
 SCAN_INTERVAL = timedelta(seconds=1)
 
-SUPPORT_HVAC = [HVAC_MODE_HEAT, HVAC_MODE_OFF]
-SUPPORT_FLAGS = (SUPPORT_TARGET_TEMPERATURE)
+SUPPORT_HVAC = [HVACMode.HEAT, HVACMode.OFF]
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -53,8 +51,8 @@ class SpaThermostat(SpaClientDevice, ClimateEntity):
     def hvac_mode(self):
         """Return current HVAC mode."""
         if self._spaclient.get_heating():
-            return HVAC_MODE_HEAT
-        return HVAC_MODE_OFF
+            return HVACMode.HEAT
+        return HVACMode.OFF
 
     @property
     def hvac_modes(self):
@@ -64,7 +62,7 @@ class SpaThermostat(SpaClientDevice, ClimateEntity):
     @property
     def supported_features(self):
         """Return the list of supported features."""
-        return SUPPORT_FLAGS
+        return ClimateEntityFeature.TARGET_TEMPERATURE
 
     @property
     def current_temperature(self):
@@ -99,8 +97,8 @@ class SpaThermostat(SpaClientDevice, ClimateEntity):
     async def async_set_hvac_mode(self, hvac_mode):
         """Set new target HVAC mode."""
         if self._spaclient.get_heating():
-            return HVAC_MODE_HEAT
-        return HVAC_MODE_OFF
+            return HVACMode.HEAT
+        return HVACMode.OFF
 
     @property
     def min_temp(self):
