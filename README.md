@@ -75,7 +75,6 @@ Pump 5 | Switch | ? | Off, Low, High
 Pump 6 | Switch | ? | Off, Low, High
 Spa Thermostat | Climate | ✓ | N/A
 Temperature Range | Switch | ✓ | Low, High
-bwa Wi-Fi Module | Binary sensor | ✓ | False, True
 
 Option | Tested
 ------ | ------
