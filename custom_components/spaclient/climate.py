@@ -25,6 +25,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
 class SpaThermostat(SpaClientDevice, ClimateEntity):
     """Representation of a climate device."""
+    _enable_turn_on_off_backwards_compatibility = False
 
     def __init__(self, spaclient, config_entry):
         """Initialize the device."""
