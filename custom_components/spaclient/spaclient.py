@@ -761,8 +761,6 @@ class spaclient:
         self.send_message(b'\x0a\xbf\x11', bytes([item]) + b'\x00')
 
     async def set_temperature(self, temp):
-        if self.temp_scale == "Celsius":
-            temp = round(TemperatureConverter.convert(temp, UnitOfTemperature.FAHRENHEIT, UnitOfTemperature.CELSIUS) * 2)
         self.send_message(b'\x0a\xbf\x20', bytes([int(temp)]))
 
     async def set_current_time(self):

@@ -91,8 +91,12 @@ class SpaThermostat(SpaClientDevice, ClimateEntity):
 
     async def async_set_temperature(self, **kwargs):
         temperature = kwargs[ATTR_TEMPERATURE]
-        if self.hass.config.units.temperature_unit == UnitOfTemperature.CELSIUS:
+        if self.hass.config.units.temperature_unit == UnitOfTemperature.CELSIUS and self._spaclient.temp_scale == "Fahrenheit":
             temperature = round(TemperatureConverter.convert(temperature, UnitOfTemperature.CELSIUS, UnitOfTemperature.FAHRENHEIT))
+        if self.hass.config.units.temperature_unit == UnitOfTemperature.CELSIUS and self._spaclient.temp_scale == "Celsius":
+            temperature = temperature * 2
+        if self.hass.config.units.temperature_unit == UnitOfTemperature.FAHRENHEIT and self._spaclient.temp_scale == "Celsius":
+            temperature = round(TemperatureConverter.convert(temperature, UnitOfTemperature.FAHRENHEIT, UnitOfTemperature.CELSIUS) * 2)
         await self._spaclient.set_temperature(temperature)
 
     async def async_set_hvac_mode(self, hvac_mode):
