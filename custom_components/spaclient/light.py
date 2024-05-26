@@ -3,7 +3,7 @@
 from . import SpaClientDevice
 from .const import _LOGGER, DOMAIN, SPA
 from datetime import timedelta
-from homeassistant.components.light import LightEntity
+from homeassistant.components.light import ColorMode, LightEntity
 
 SCAN_INTERVAL = timedelta(seconds=1)
 
@@ -41,6 +41,16 @@ class SpaLight(SpaClientDevice, LightEntity):
     def name(self):
         """Return the name of the device."""
         return 'Light ' + str(self._light_num)
+
+    @property
+    def color_mode(self):
+        """Return the color mode of the light."""
+        return ColorMode.ONOFF
+
+    @property
+    def supported_color_modes(self):
+        """Return supported color modes."""
+        return [ColorMode.ONOFF]
 
     @property
     def is_on(self):

@@ -14,15 +14,39 @@ SPACLIENT_COMPONENTS = [
     "binary_sensor",
     "climate",
     "light",
+    "sensor",
     "switch",
     "time",
 ]
+
+FAULT_MSG = {
+    15: "Sensors are out of sync",
+    16: "The water flow is low",
+    17: "The water flow has failed",
+    18: "The settings have been reset",
+    19: "Priming Mode",
+    20: "The clock has failed",
+    21: "The settings have been reset",
+    22: "Program memory failure",
+    26: "Sensors are out of sync -- Call for service",
+    27: "The heater is dry",
+    28: "The heater may be dry",
+    29: "The water is too hot",
+    30: "The heater is too hot",
+    31: "Sensor A Fault",
+    32: "Sensor B Fault",
+    34: "A pump may be stuck on",
+    35: "Hot fault",
+    36: "The GFCI test failed",
+    37: "Standby Mode (Hold Mode)"
+}
 
 ICONS = {
     "Auxiliary 1": "mdi:numeric-1-circle-outline",
     "Auxiliary 2": "mdi:numeric-2-circle-outline",
     "Blower": "mdi:weather-windy",
     "Circulation Pump": "mdi:fan",
+    "Fault Log": "mdi:archive-alert",
     "Filter Cycle": "mdi:sync",
     "Heat Mode": "mdi:alpha-r",
     "Mister": "mdi:auto-fix",

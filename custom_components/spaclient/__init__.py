@@ -67,16 +67,19 @@ async def async_setup_entry(hass, config_entry):
     if not connected:
         raise ConfigEntryNotReady
 
-    await spa.send_module_identification_request()
-    await spa.send_configuration_request()
-    await spa.send_information_request()
     await spa.send_additional_information_request()
+    await spa.send_configuration_request()
+    await spa.send_fault_log_request()
     await spa.send_filter_cycles_request()
+    await spa.send_gfci_test_request()
+    await spa.send_information_request()
+    await spa.send_module_identification_request()
+    await spa.send_preferences_request()
 
     await update_listener(hass, config_entry)
 
-    hass.loop.create_task(spa.read_all_msg())
     hass.loop.create_task(spa.keep_alive_call())
+    hass.loop.create_task(spa.read_all_msg())
 
     for component in SPACLIENT_COMPONENTS:
         hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, component))

@@ -12,7 +12,7 @@
 
 Since the event where my spa emptied when it was -30°C outside and it took me a while to find out (luckily, more fear than harm!)... I tried to find a solution to better supervise my spa! Initially, I wanted to replicate my iPhone's **Coast Spas** App in Home Assistant so that I could create notifications, track, control and automate/script some stuff. I was also looking to replicate my home automation in the **Home** App to simplify my family's access to all my different platforms. Home Assistant was the perfect fit for that!
 
-**Spa Client** is inspired by several similar projects and the work of many people. With version 2.0, several elements have been improved in order to represent the App **Coast Spas** as faithfully as possible. During installation, all the components are created according to the configuration of your spa!
+**Spa Client** is inspired by several similar projects and the work of many people. With version 2.0 and later, several elements have been improved in order to represent the App **Coast Spas** as faithfully as possible. During installation, all the components are created according to the configuration of your spa!
 
 ## What you need
 
@@ -64,6 +64,7 @@ Filter Cycle 2 Begins | Time | ✓ | N/A
 Filter Cycle 2 Runs | Time | ✓ | N/A
 Filter Cycle 2 Status | Binary sensor | ✓ | Begins, Runs, Ends
 Heat Mode | Switch | ✓ | Ready, Rest, Ready in Rest
+Last Known Fault | Sensor | ✓ | N/A
 Light 1 | Light | ✓ | False, True
 Light 2 | Light | ? | False, True
 Mister | Switch | ? | Off, On
@@ -90,7 +91,6 @@ Time sync with Home Assistant | ✓
 
 - [ ] Bring back the ability to configure this custom component via the entries in configuration.yaml
 - [ ] Change the way I update entities (from polling mode to subscribing to updates)
-- [ ] Implement the other spa messages (fault log, gfi test, etc.)
 
 ### Completed
 
@@ -99,6 +99,7 @@ Time sync with Home Assistant | ✓
 - [x] Allow the installation of this custom component through the Home Assistant integrations menu (use of config_flow.py)
 - [x] Create an icon and logo for this custom component
 - [x] Customize entity IDs with **Spa Client** custom name to allow multiple integrations in the same Home Assistant instance
+- [x] Implement the other spa messages (fault log, gfi test, etc.)
 - [x] Investigate why it takes so long to load the component on an RPi (~2s on docker; ~85s on RPi3)
 - [x] Manage the availability of entities while not connected
 

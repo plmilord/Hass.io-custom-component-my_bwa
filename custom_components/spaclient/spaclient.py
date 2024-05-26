@@ -12,11 +12,11 @@ from threading import Lock
 
 class spaclient:
     def __init__(self, host_ip):
-        """ socket variables """
-        self.is_connected = False
-        self.l = Lock()
-        self.s = None
-        self.host_ip = host_ip
+        """ Socket variables """
+        self.socket_is_connected = False
+        self.socket_l = Lock()
+        self.socket_s = None
+        self.socket_host_ip = host_ip
 
         """ Status update variable """
         self.status_chunk_array = []
@@ -49,63 +49,90 @@ class spaclient:
         self.set_temp = 0
 
         """ Information variables """
-        self.model_name = "Unknown"
-        self.cfg_sig = "Unknown"
-        self.sw_vers = "Unknown"
-        self.setup = 0
-        self.ssid = "Unknown"
-        self.heater_voltage = "Unknown"
-        self.heater_type = "Unknown"
-        self.dip_switch = "0000000000000000"
+        self.info_model_name = "Unknown"
+        self.info_cfg_sig = "Unknown"
+        self.info_sw_vers = "Unknown"
+        self.info_setup = 0
+        self.info_ssid = "Unknown"
+        self.info_heater_voltage = "Unknown"
+        self.info_heater_type = "Unknown"
+        self.info_dip_switch = "0000000000000000"
         self.information_loaded = False
 
         """ Configuration variables """
-        self.pump_array = [0, 0, 0, 0, 0, 0]
-        self.light_array = [0, 0]
-        self.circ_pump_array = [0]
-        self.blower_array = [0]
-        self.mister_array = [0]
-        self.aux_array = [0, 0]
+        self.cfg_pump_array = [0, 0, 0, 0, 0, 0]
+        self.cfg_light_array = [0, 0]
+        self.cfg_circ_pump_array = [0]
+        self.cfg_blower_array = [0]
+        self.cfg_mister_array = [0]
+        self.cfg_aux_array = [0, 0]
         self.configuration_loaded = False
 
         """ Module identification variables """
-        self.macaddr = "Unknown"
-        self.idigi_device_id = "Unknown"
+        self.id_macaddr = "Unknown"
+        self.id_mac_oui = "Unknown"
+        self.id_mac_nic = "Unknown"
         self.module_identification_loaded = False
 
         """ Filter cycles variables """
-        self.filter1_begins_hour = 0
-        self.filter1_begins_minute = 0
-        self.filter1_runs_hour = 0
-        self.filter1_runs_minute = 0
-        self.filter2_enabled = 0
-        self.filter2_begins_hour = 0
-        self.filter2_begins_minute = 0
-        self.filter2_runs_hour = 0
-        self.filter2_runs_minute = 0
+        self.filter_1_begins_hour = 0
+        self.filter_1_begins_minute = 0
+        self.filter_1_runs_hour = 0
+        self.filter_1_runs_minute = 0
+        self.filter_2_enabled = 0
+        self.filter_2_begins_hour = 0
+        self.filter_2_begins_minute = 0
+        self.filter_2_runs_hour = 0
+        self.filter_2_runs_minute = 0
         self.filter_cycles_loaded = False
 
         """ Additional information variables """
-        self.low_range_min = 0
-        self.low_range_max = 0
-        self.high_range_min = 0
-        self.high_range_max = 0
-        self.nb_of_pumps = 0
+        self.add_info_low_range_min = 0
+        self.add_info_low_range_max = 0
+        self.add_info_high_range_min = 0
+        self.add_info_high_range_max = 0
+        self.add_info_nb_of_pumps = 0
         self.additional_information_loaded = False
 
+        """ Preferences variables """
+        self.pref_reminder = "Off"
+        self.pref_temp_scale = "Fahrenheit"
+        self.pref_clock_mode = "24 Hr"
+        self.pref_clean_up_cycle = 0
+        self.pref_dolphin_address = 0
+        self.pref_m8_ai = "Off"
+        self.preferences_loaded = False
+
+        """ Fault log variables """
+        self.fault_log_total_entries = 0
+        self.fault_log_entry_nb = 0
+        self.fault_log_msg_code = 0
+        self.fault_log_days_ago = 0
+        self.fault_log_msg_hour = 0
+        self.fault_log_msg_minute = 0
+        self.fault_log_todo = 0
+        self.fault_log_set_temp = 0
+        self.fault_log_sensor_a_temp = 0
+        self.fault_log_sensor_b_temp = 0
+        self.fault_log_loaded = False
+
+        """ GFCI test variables """
+        self.gfci_test_result = 0
+        self.gfci_test_loaded = False
+
     async def get_socket(self):
-        if self.s is None:
-            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.s.settimeout(5)
+        if self.socket_s is None:
+            self.socket_s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket_s.settimeout(5)
 
         try:
-            self.s.connect((self.host_ip, 4257))
+            self.socket_s.connect((self.socket_host_ip, 4257))
             return True
         except (socket.timeout, socket.error) as e:
             #_LOGGER.error("Socket connection error: %s", e) #Validation point
-            self.is_connected = False
-            self.s.close()
-            self.s = None
+            self.socket_is_connected = False
+            self.socket_s.close()
+            self.socket_s = None
             return True
 
     async def validate_connection(self):
@@ -113,17 +140,369 @@ class spaclient:
 
         await self.get_socket()
 
-        if self.s is not None:
-            while count < 20 or self.is_connected == False:
+        if self.socket_s is not None:
+            while count < 20 or self.socket_is_connected == False:
                 self.read_msg()
                 await asyncio.sleep(.1)
                 count += 1
 
-            if self.is_connected == False:
-                self.s.close()
-                self.s = None
+            if self.socket_is_connected == False:
+                self.socket_s.close()
+                self.socket_s = None
 
-        return self.is_connected
+        return self.socket_is_connected
+
+    async def keep_alive_call(self):
+        while True:
+            if self.socket_s is None:
+                await self.get_socket()
+            else:
+                await self.send_fault_log_request()
+            await asyncio.sleep(30)
+
+    def compute_checksum(self, length, payload):
+        crc = 0xb5
+        for cur in range(length):
+            for i in range(8):
+                bit = crc & 0x80
+                crc = ((crc << 1) & 0xff) | ((payload[cur] >> (7 - i)) & 0x01)
+                if bit:
+                    crc = crc ^ 0x07
+            crc &= 0xff
+        for i in range(8):
+            bit = crc & 0x80
+            crc = (crc << 1) & 0xff
+            if bit:
+                crc ^= 0x07
+        return crc ^ 0x02
+
+    def read_msg(self):
+        self.socket_l.acquire()
+
+        try:
+            len_chunk = self.socket_s.recv(2)
+        except (socket.timeout, socket.error) as e:
+            #_LOGGER.error("self.socket_s.recv(2) error = %s", e) #Validation point
+            self.socket_is_connected = False
+            self.socket_l.release()
+            self.socket_s.close()
+            self.socket_s = None
+            return True
+
+        if len_chunk == b'~' or len_chunk == b'' or len(len_chunk) == 0:
+            self.socket_l.release()
+            return True
+
+        length = len_chunk[1]
+
+        if int(length) == 0:
+            self.socket_l.release()
+            return True
+
+        try:
+            chunk = self.socket_s.recv(length)
+        except (socket.timeout, socket.error) as e:
+            #_LOGGER.error("self.socket_s.recv(length) error = %s", e) #Validation point
+            self.socket_is_connected = False
+            self.socket_l.release()
+            self.socket_s.close()
+            self.socket_s = None
+            return True
+
+        self.socket_l.release()
+
+        if chunk != self.status_chunk_array:
+            if chunk[0:3] == b'\xff\xaf\x13' and ((self.information_loaded and self.additional_information_loaded and self.preferences_loaded and self.configuration_loaded and self.module_identification_loaded) or (self.socket_is_connected == False)):
+                #_LOGGER.info("Status update = %s", chunk[3:]) #Validation point
+                self.parse_status_update(chunk[3:])
+                self.status_chunk_array = chunk
+                self.socket_is_connected = True
+                return True
+
+            if chunk[0:3] == b'\x0a\xbf\x23':
+                #_LOGGER.info("Filter cycles response = %s", chunk[3:]) #Validation point
+                self.parse_filter_cycles_response(chunk[3:])
+                return True
+
+            if chunk[0:3] == b'\x0a\xbf\x24' and self.information_loaded != True:
+                #_LOGGER.info("Information response = %s", chunk[3:]) #Validation point
+                self.parse_information_response(chunk[3:])
+                return True
+
+            if chunk[0:3] == b'\x0a\xbf\x25' and self.additional_information_loaded != True:
+                #_LOGGER.info("Additional information response = %s", chunk[3:]) #Validation point
+                self.parse_additional_information_response(chunk[3:])
+                return True
+
+            if chunk[0:3] == b'\x0a\xbf\x26' and self.preferences_loaded != True:
+                #_LOGGER.info("Preferences response = %s", chunk[3:]) #Validation point
+                self.parse_preferences_response(chunk[3:])
+                return True
+
+            if chunk[0:3] == b'\x0a\xbf\x28':
+                #_LOGGER.info("Fault log response = %s", chunk[3:]) #Validation point
+                self.parse_fault_log_response(chunk[3:])
+                return True
+
+            if chunk[0:3] == b'\x0a\xbf\x2b':
+                #_LOGGER.info("GFCI test response = %s", chunk[3:]) #Validation point
+                self.parse_gfci_test_response(chunk[3:])
+                return True
+
+            if chunk[0:3] == b'\x0a\xbf\x2e' and self.configuration_loaded != True:
+                #_LOGGER.info("Configuration response = %s", chunk[3:]) #Validation point
+                self.parse_configuration_response(chunk[3:])
+                return True
+
+            if chunk[0:3] == b'\x0a\xbf\x94' and self.module_identification_loaded != True:
+                #_LOGGER.info("Module identification response = %s", chunk[3:]) #Validation point
+                self.parse_module_identification_response(chunk[3:])
+                return True
+
+        return True
+
+    async def read_all_msg(self):
+        while True:
+            if self.socket_s is not None:
+                self.read_msg()
+            await asyncio.sleep(.1)
+
+
+    def parse_additional_information_response(self, byte_array):
+        """ Parse additional information response.
+
+            SSID       Length
+        M100_210 V6.0    14
+        M100_225 V36.0   14
+        M100_201 V44.0   15
+
+                         00 01 02 03 04 05 06 07 08
+        MS ML MT MT MT   00 01 LL LH HL HH 06 07 08   CS ME
+        7E 0E 0A BF 25                                   7E
+
+        00: ?
+        01: ?
+        LL: Low Low - Low range temperature's minimum in Fahrenheit
+        LH: Low High - Low range temperature's maximum in Fahrenheit
+        HL: High Low - High range temperature's minimum in Fahrenheit
+        HH: High High - High range temperature's maximum in Fahrenheit
+        06: ?
+        07: Number of pumps
+        08: ?
+
+        """
+
+        self.add_info_low_range_min = byte_array[2]
+        self.add_info_low_range_max = byte_array[3]
+        self.add_info_high_range_min = byte_array[4]
+        self.add_info_high_range_max = byte_array[5]
+
+        self.add_info_nb_of_pumps = (
+            (byte_array[7] & 0x01)
+            + (byte_array[7] >> 1 & 0x01)
+            + (byte_array[7] >> 2 & 0x01)
+            + (byte_array[7] >> 3 & 0x01)
+            + (byte_array[7] >> 4 & 0x01)
+            + (byte_array[7] >> 5 & 0x01)
+        )
+
+        self.additional_information_loaded = True
+
+    def parse_configuration_response(self, byte_array):
+        """ Parse a panel config response.
+
+                         00 01 02 03 04 05
+        MS ML MT MT MT   00 01 02 03 04 05   CS ME
+        7E 0B 0A BF 2E                          7E
+
+        00: P4P3P2P1 - Pumps 1-4 (0 = None, 1 = 1-speed, 2 = 2-speed)
+        01: P6xxxxP5 - Pumps 5-6 (0 = None, 1 = 1-speed, 2 = 2-speed)
+        02: L2xxxxL1 - Lights (0 = None, 1 = Present)
+        03: CxxxxxBL - Circulation pump, Blower (0 = None, 1 = Present)
+        04: xxMIxxAA - Mister, Aux2, Aux1 (0 = None, 1 = Present)
+        05: ?
+
+        """
+
+        self.cfg_pump_array[0] = int((byte_array[0] & 0x03))
+        self.cfg_pump_array[1] = int((byte_array[0] & 0x0c) >> 2)
+        self.cfg_pump_array[2] = int((byte_array[0] & 0x30) >> 4)
+        self.cfg_pump_array[3] = int((byte_array[0] & 0xc0) >> 6)
+        self.cfg_pump_array[4] = int((byte_array[1] & 0x03))
+        self.cfg_pump_array[5] = int((byte_array[1] & 0xc0) >> 6)
+
+        self.cfg_light_array[0] = int((byte_array[2] & 0x03) != 0)
+        self.cfg_light_array[1] = int((byte_array[2] & 0xc0) != 0)
+
+        self.cfg_circ_pump_array[0] = int((byte_array[3] & 0x80) != 0)
+        self.cfg_blower_array[0] = int((byte_array[3] & 0x03) != 0)
+        self.cfg_mister_array[0] = int((byte_array[4] & 0x30) != 0)
+
+        self.cfg_aux_array[0] = int((byte_array[4] & 0x01) != 0)
+        self.cfg_aux_array[1] = int((byte_array[4] & 0x02) != 0)
+
+        self.configuration_loaded = True
+
+    def parse_fault_log_response(self, byte_array):
+        """ Parse fault log response.
+
+                         00 01 02 03 04 05 06 07 08 09
+        MS ML MT MT MT   00 01 02 03 04 05 06 07 08 09   CS ME
+        7E 0F 0A BF 28                                      7E
+
+        00: Total Entries (0-24)
+        01: Entry Number (0-23 (0=Entry #1))
+        02: Message Code
+        03: Days Ago (0-255?)
+        04: Time: Hour (0-23)
+        05: Time: Minute (0-59)
+        06: Flags TODO
+        07: Set Temperature (Temperature scaled by Temperature Scale)
+        08: Sensor A Temperature (Temperature scaled by Temperature Scale)
+        09: Sensor B Temperature (Temperature scaled by Temperature Scale)
+
+        """
+        self.fault_log_total_entries = byte_array[0]
+        self.fault_log_entry_nb = byte_array[1]
+        self.fault_log_msg_code = byte_array[2]
+        self.fault_log_days_ago = byte_array[3]
+        self.fault_log_msg_hour = byte_array[4]
+        self.fault_log_msg_minute = byte_array[5]
+        self.fault_log_todo = byte_array[6]
+        self.fault_log_set_temp = byte_array[7]
+        self.fault_log_sensor_a_temp = byte_array[8]
+        self.fault_log_sensor_b_temp = byte_array[9]
+
+        self.fault_log_loaded = True
+
+    def parse_filter_cycles_response(self, byte_array):
+        """ Parse filter cycles response.
+
+                         00 01 02 03 04 05 06 07
+        MS ML MT MT MT   1H 1M 1D 1E 2H 2M 2D 2E   CS ME
+        7E 0D 0A BF 23                                7E
+
+        1H: Filter 1 begins hour (0-23)
+        1M: Filter 1 begins minute (0-59)
+        1D: Filter 1 runs hour (0-23)
+        1E: Filter 1 runs minute (0-59)
+        2H: Filter 2 begins hour (0-23), masking out the high order bit, which is used as an enable/disable flag
+        2M: Filter 2 begins minute (0-59)
+        2D: Filter 2 runs hour (0-23)
+        2E: Filter 2 runs minute (0-59)
+
+        """
+
+        self.filter_1_begins_hour = byte_array[0]
+        self.filter_1_begins_minute = byte_array[1]
+        self.filter_1_runs_hour = byte_array[2]
+        self.filter_1_runs_minute = byte_array[3]
+        self.filter_2_enabled = byte_array[4] >> 7
+        self.filter_2_begins_hour = byte_array[4] ^ (self.filter_2_enabled << 7)
+        self.filter_2_begins_minute = byte_array[5]
+        self.filter_2_runs_hour = byte_array[6]
+        self.filter_2_runs_minute = byte_array[7]
+
+        self.filter_cycles_loaded = True
+
+    def parse_gfci_test_response(self, byte_array):
+        """ Parse fault log response.
+
+                         00
+        MS ML MT MT MT   00   CS ME
+        7E 06 0A BF 2B           7E
+
+        00: 0x00 = N/A ? or FAIL?
+            0x01 = PASS
+
+        """
+
+        self.gfci_test_result = byte_array[0]
+
+        self.gfci_test_loaded = True
+
+    def parse_information_response(self, byte_array):
+        """ Parse information response.
+
+                         00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
+        MS ML MT MT MT   I0 I1 V0 V1 M0 M1 M2 M3 M4 M5 M6 M7 SU S0 S1 S2 S3 HV HT D0 D1   CS ME
+        7E 1A 0A BF 24                                                                       7E
+
+        I0-I1: Software ID (SSID) (Displayed (in decimal) as "M<I0>_<I1> V<V0>[.<V1>]"
+        V0-V1
+        M0-M7: System Model Number (ASCII-encoded string)
+        SU   : Current Configuration Setup Number
+        S1-S3: Configuration Signature (Checksum of the system configuration file)
+        HV   : Heat Voltage (0x01 = 240, other = Unknown)
+        HT   : Heater Type (0x0A = Standard, other = Unknown)
+        D0-D1: DIP Switch Settings (bit 0 of Byte 19 is position 1)
+
+        """
+
+        model = [byte_array[4], byte_array[5], byte_array[6], byte_array[7], byte_array[8], byte_array[9], byte_array[10], byte_array[11]]
+        model_name = "".join(map(chr, model))
+        self.info_model_name = model_name.strip()
+
+        self.info_sw_vers = f"{str(byte_array[2])}.{str(byte_array[3])}"
+        self.info_setup = byte_array[12]
+        self.info_ssid = f"M{str(byte_array[0])}_{str(byte_array[1])} V{self.info_sw_vers}"
+        self.info_cfg_sig = f"{byte_array[13]:x}{byte_array[14]:x}{byte_array[15]:x}{byte_array[16]:x}"
+        self.info_heater_voltage = 240 if byte_array[17] == 0x01 else "Unknown"
+        self.info_heater_type = "Standard" if byte_array[18] == 0x0A else "Unknown"
+        self.info_dip_switch = f"{byte_array[19]:08b}{byte_array[20]:08b}"
+
+        self.information_loaded = True
+
+    def parse_module_identification_response(self, byte_array):
+        """ Parse a module identification response.
+
+                         00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
+        MS ML MT MT MT   00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24   CS ME
+        7E 1E 0A BF 94                                                                                   7E
+
+        00-02: ?
+        03-08: MAC Address
+        09-16: ? (0)
+        17-19: MAC Address Organizationally Unique Identifier (OUI) (Balboa Instruments = 00:15:27)
+        20-21: ? (0xFF)
+        22-24: MAC Address Network Interface Controller (NIC) (Specific)
+
+        """
+
+        self.id_macaddr = f"{byte_array[3]:02x}:{byte_array[4]:02x}:{byte_array[5]:02x}:{byte_array[6]:02x}:{byte_array[7]:02x}:{byte_array[8]:02x}"
+        self.id_mac_oui = f"{byte_array[17]:02x}:{byte_array[18]:02x}:{byte_array[19]:02x}"
+        self.id_mac_nic = f"{byte_array[22]:02x}:{byte_array[23]:02x}:{byte_array[24]:02x}"
+
+        self.module_identification_loaded = True
+
+    def parse_preferences_response(self, byte_array):
+        """ Parse preferences response.
+
+                         00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17
+        MS ML MT MT MT   00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17   CS ME
+        7E 17 0A BF 26                                                              7E
+
+        00: ?
+        01: Reminders (0 = OFF, 1 = ON)
+        02: ?
+        03: Temperature Scale (0 = Fahrenheit, 1 = Celsius)
+        04: Clock Mode (0 = 12 hour time, 1 = 24 hour time)
+        05: Clean-up Cycle (0 = OFF, 1-8 (30 minute increments))
+        06: Dolphin Address (0 = None, 1-7 = Address)
+        07: ?
+        08: M8 Artificial Intelligence (0 = OFF, 1 = ON)
+        09-17: ?
+
+        """
+
+        self.pref_reminder = ("Off", "On")[byte_array[1] & 0x01]
+        self.pref_temp_scale = ("Fahrenheit", "Celsius")[byte_array[3] & 0x01]
+        self.pref_clock_mode = ("12 Hr", "24 Hr")[byte_array[4] & 0x01]
+        self.pref_clean_up_cycle = byte_array[5]
+        self.pref_dolphin_address = byte_array[6]
+        self.pref_m8_ai = ("Off", "On")[byte_array[8] & 0x01]
+
+        self.preferences_loaded = True
 
     def parse_status_update(self, byte_array):
         """ Parse a status update from the spa.
@@ -131,7 +510,10 @@ class spaclient:
             SSID       Length
         M100_210 V6.0    28
         M100_220 V20.0   29
+        M100_225 V36.0   29
         M100_201 V44.0   32
+        M100_201 V47.0   32
+        M100_220 V50.0   32
 
         MS: Message Start (always 0x7e "~")
         ML: Message Length
@@ -150,16 +532,16 @@ class spaclient:
             0x17 = Test Mode
         F1: 0x00 = Idle
             0x01 = Priming Mode
-            0x02 = Post-Settings Reset?
+            0x02 = Fault?
             0x03 = Reminder
             0x04 = Stage 1?
             0x05 = Stage 3?
             0x42 = Stage 2?
         CT: Current Temperature (divide by two if in Celsius; 0xFF if unknown)
-        HH: Hour (always 0-24, even in 12 hour mode; flag is used to control display)
+        HH: Hour (always 0-23, even in 12 hour mode; flag is used to control display)
         MM: Minute (0-59)
         F2: 0x03 = Heating Mode (0 = Ready, 1 = Rest, 3 = Ready in rest)
-        06: Reminder Type (0x00 = None, 0x0A = Check the pH, 0x09 = Check the sanitizer)
+        06: Reminder Type (0x00 = None, 0x04 = Clean filter, 0x0A = Check the pH, 0x09 = Check the sanitizer, 0x1E = Fault?)
         TA: Sensor A Temperature / Hold Timer (Minutes if Hold Mode else Temperature (scaled by Temperature Scale) if A/B Temps else 0x00)
         TB: Sensor B Temperature (0x00 if A/B Temps if OFF else Temperature (scaled by Temperature Scale))
         F3: 0x01 = Temperature Scale (0 = Fahrenheit, 1 = Celsius)
@@ -228,213 +610,33 @@ class spaclient:
         self.aux2 = flag6 & 0x10
         self.set_temp = byte_array[20]
 
-    def parse_filter_cycles_response(self, byte_array):
-        """ Parse filter cycles response.
 
-                         00 01 02 03 04 05 06 07
-        MS ML MT MT MT   1H 1M 1D 1E 2H 2M 2D 2E   CS ME
-        7E 0D 0A BF 23                                7E
+    def get_aux(self, aux_num):
+        if aux_num == 1:
+            return self.get_aux1()
+        else:
+            return self.get_aux2()
 
-        1H: Filter 1 begins hour (always 0-24)
-        1M: Filter 1 begins minute
-        1D: Filter 1 runs hour
-        1E: Filter 1 runs minute
-        2H: Filter 2 begins hour, masking out the high order bit, which is used as an enable/disable flag
-        2M: Filter 2 begins minute
-        2D: Filter 2 runs hour
-        2E: Filter 2 runs minute
+    def get_aux_list(self):
+        return self.cfg_aux_array
 
-        """
+    def get_aux1(self):
+        return self.aux1
 
-        self.filter1_begins_hour = byte_array[0]
-        self.filter1_begins_minute = byte_array[1]
-        self.filter1_runs_hour = byte_array[2]
-        self.filter1_runs_minute = byte_array[3]
-        self.filter2_enabled = byte_array[4] >> 7
-        self.filter2_begins_hour = byte_array[4] ^ (self.filter2_enabled << 7)
-        self.filter2_begins_minute = byte_array[5]
-        self.filter2_runs_hour = byte_array[6]
-        self.filter2_runs_minute = byte_array[7]
+    def get_aux2(self):
+        return self.aux2
 
-        self.filter_cycles_loaded = True
+    def get_blower(self):
+        return self.blower
 
-    def parse_information_response(self, byte_array):
-        """ Parse information response.
+    def get_blower_list(self):
+        return self.cfg_blower_array
 
-                         00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20
-        MS ML MT MT MT   I0 I1 V0 V1 M0 M1 M2 M3 M4 M5 M6 M7 SU S0 S1 S2 S3 HV HT D0 D1   CS ME
-        7E 1A 0A BF 24                                                                       7E
+    def get_circ_pump(self):
+        return self.circ_pump
 
-        I0-I1: Software ID (SSID) (Displayed (in decimal) as "M<I0>_<I1> V<V0>[.<V1>]"
-        V0-V1
-        M0-M7: System Model Number (ASCII-encoded string)
-        SU   : Current Configuration Setup Number
-        S1-S3: Configuration Signature (Checksum of the system configuration file)
-        HV   : Heat Voltage (0x01 = 240, other = Unknown)
-        HT   : Heater Type (0x0A = Standard, other = Unknown)
-        D0-D1: DIP Switch Settings (bit 0 of Byte 19 is position 1)
-
-        """
-
-        model = [byte_array[4], byte_array[5], byte_array[6], byte_array[7], byte_array[8], byte_array[9], byte_array[10], byte_array[11]]
-        model_name = "".join(map(chr, model))
-        self.model_name = model_name.strip()
-
-        self.sw_vers = f"{str(byte_array[2])}.{str(byte_array[3])}"
-        self.setup = byte_array[12]
-        self.ssid = f"M{str(byte_array[0])}_{str(byte_array[1])} V{self.sw_vers}"
-        self.cfg_sig = f"{byte_array[13]:x}{byte_array[14]:x}{byte_array[15]:x}{byte_array[16]:x}"
-        self.heater_voltage = 240 if byte_array[17] == 0x01 else "Unknown"
-        self.heater_type = "Standard" if byte_array[18] == 0x0A else "Unknown"
-        self.dip_switch = f"{byte_array[19]:08b}{byte_array[20]:08b}"
-
-        self.information_loaded = True
-
-    def parse_additional_information_response(self, byte_array):
-        """ Parse additional information response.
-
-                         00 01 02 03 04 05 06 07 08
-        MS ML MT MT MT   00 01 LL LH HL HH 06 07 08   CS ME
-        7E 0E 0A BF 25                                   7E
-
-        00: ?
-        01: ?
-        LL: Low Low - Low range temperature's minimum in Fahrenheit
-        LH: Low High - Low range temperature's maximum in Fahrenheit
-        HL: High Low - High range temperature's minimum in Fahrenheit
-        HH: High High - High range temperature's maximum in Fahrenheit
-        06: ?
-        07: Number of pumps
-        08: ?
-
-        """
-
-        self.low_range_min = byte_array[2]
-        self.low_range_max = byte_array[3]
-        self.high_range_min = byte_array[4]
-        self.high_range_max = byte_array[5]
-
-        self.nb_of_pumps = (
-            (byte_array[7] & 0x01)
-            + (byte_array[7] >> 1 & 0x01)
-            + (byte_array[7] >> 2 & 0x01)
-            + (byte_array[7] >> 3 & 0x01)
-            + (byte_array[7] >> 4 & 0x01)
-            + (byte_array[7] >> 5 & 0x01)
-        )
-
-        self.additional_information_loaded = True
-
-    def parse_preferences_response(self, byte_array):
-        """ Parse preferences response.
-
-                         00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17
-        MS ML MT MT MT   00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17   CS ME
-        7E 17 0A BF 26                                                              7E
-
-        00: ?
-        01: Reminders (0 = OFF, 1 = OFF)
-        02: ?
-        03: Temperature Scale (0 = 1°F, 1 = 0.5°C)
-        04: Clock Mode (0 = 12-hour, 1 = 24-hour)
-        05: Clean-up Cycle (0 = OFF, 1-8 (30 minute increments))
-        06: Dolphin Address (0 = None, 1-7 = Address)
-        07: ?
-        08: M8 Artificial Intelligence (0 = OFF, 1 = ON)
-        09-17: ?
-
-        """
-
-        return True
-
-    def parse_fault_log_response(self, byte_array):
-        """ Parse fault log response.
-
-                         00 01 02 03 04 05 06 07 08 09
-        MS ML MT MT MT   00 01 02 03 04 05 06 07 08 09   CS ME
-        7E 0F 0A BF 28                                      7E
-
-        00: Total Entries (0-24)
-        01: Entry Number (0-23 (0=Entry #1))
-        02: Message Code
-        03: Days Ago (0-255?)
-        04: Time: Hour (0-24)
-        05: Time: Minute (0-59)
-        06: Flags TODO
-        07: Set Temperature (Temperature scaled by Temperature Scale)
-        08: Sensor A Temperature (Temperature scaled by Temperature Scale)
-        09: Sensor B Temperature (Temperature scaled by Temperature Scale)
-
-        """
-
-        return True
-
-    def parse_gfci_test_response(self, byte_array):
-        """ Parse fault log response.
-
-                         00
-        MS ML MT MT MT   00   CS ME
-        7E 06 0A BF 2B           7E
-
-        00: 0x00 = N/A ? or FAIL?
-            0x01 = PASS
-
-        """
-
-        return True
-
-    def parse_configuration_response(self, byte_array):
-        """ Parse a panel config response.
-
-                         00 01 02 03 04 05
-        MS ML MT MT MT   00 01 02 03 04 05   CS ME
-        7E 0B 0A BF 2E                          7E
-
-        00: P4P3P2P1 - Pumps 1-4 (0 = None, 1 = 1-speed, 2 = 2-speed)
-        01: P6xxxxP5 - Pumps 5-6 (0 = None, 1 = 1-speed, 2 = 2-speed)
-        02: L2xxxxL1 - Lights (0 = None, 1 = Present)
-        03: CxxxxxBL - Circulation pump, Blower (0 = None, 1 = Present)
-        04: xxMIxxAA - Mister, Aux2, Aux1 (0 = None, 1 = Present)
-        05: ?
-
-        """
-
-        self.pump_array[0] = int((byte_array[0] & 0x03))
-        self.pump_array[1] = int((byte_array[0] & 0x0c) >> 2)
-        self.pump_array[2] = int((byte_array[0] & 0x30) >> 4)
-        self.pump_array[3] = int((byte_array[0] & 0xc0) >> 6)
-        self.pump_array[4] = int((byte_array[1] & 0x03))
-        self.pump_array[5] = int((byte_array[1] & 0xc0) >> 6)
-
-        self.light_array[0] = int((byte_array[2] & 0x03) != 0)
-        self.light_array[1] = int((byte_array[2] & 0xc0) != 0)
-
-        self.circ_pump_array[0] = int((byte_array[3] & 0x80) != 0)
-        self.blower_array[0] = int((byte_array[3] & 0x03) != 0)
-        self.mister_array[0] = int((byte_array[4] & 0x30) != 0)
-
-        self.aux_array[0] = int((byte_array[4] & 0x01) != 0)
-        self.aux_array[1] = int((byte_array[4] & 0x02) != 0)
-
-        self.configuration_loaded = True
-
-    def parse_module_identification_response(self, byte_array):
-        """ Parse a module identification response.
-
-                         00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
-        MS ML MT MT MT   00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24   CS ME
-        7E 1E 0A BF 94                                                                                   7E
-
-        00-02: ?
-        03-08: MAC address
-        09-24: iDigi device id (used to communicate with Balboa cloud API)
-
-        """
-
-        self.macaddr = f"{byte_array[3]:02x}:{byte_array[4]:02x}:{byte_array[5]:02x}:{byte_array[6]:02x}:{byte_array[7]:02x}:{byte_array[8]:02x}"
-        self.idigi_device_id = f"{byte_array[9:13].hex()}-{byte_array[13:17].hex()}-{byte_array[17:21].hex()}-{byte_array[21:25].hex()}".upper()
-
-        self.module_identification_loaded = True
+    def get_circ_pump_list(self):
+        return self.cfg_circ_pump_array
 
     def get_current_temp(self):
         return self.current_temp
@@ -442,14 +644,114 @@ class spaclient:
     def get_current_time(self):
         return "%d:%02d" % (self.hour, self.minute)
 
+    def get_fault_log_msg_code(self):
+        return self.fault_log_msg_code
+
+    def get_filter_begins(self, filter_num):
+        if filter_num == 1:
+            return "%02d:%02d" % (self.filter_1_begins_hour, self.filter_1_begins_minute)
+        else:
+            return "%02d:%02d" % (self.filter_2_begins_hour, self.filter_2_begins_minute)
+
+    def get_filter_begins_hour(self, filter_num):
+        if filter_num == 1:
+            return self.filter_1_begins_hour
+        else:
+            return self.filter_2_begins_hour
+
+    def get_filter_begins_minute(self, filter_num):
+        if filter_num == 1:
+            return self.filter_1_begins_minute
+        else:
+            return self.filter_2_begins_minute
+
+    def get_filter_ends(self, filter_num):
+        if filter_num == 1:
+            if self.filter_1_begins_hour + self.filter_1_runs_hour >= 24:
+                return "%02d:%02d" % (self.filter_1_begins_hour + self.filter_1_runs_hour - 24, self.filter_1_begins_minute + self.filter_1_runs_minute)
+            return "%02d:%02d" % (self.filter_1_begins_hour + self.filter_1_runs_hour, self.filter_1_begins_minute + self.filter_1_runs_minute)
+        else:
+            if self.filter_2_begins_hour + self.filter_2_runs_hour >= 24:
+                return "%02d:%02d" % (self.filter_2_begins_hour + self.filter_2_runs_hour - 24, self.filter_2_begins_minute + self.filter_2_runs_minute)
+            return "%02d:%02d" % (self.filter_2_begins_hour + self.filter_2_runs_hour, self.filter_2_begins_minute + self.filter_2_runs_minute)
+
+    def get_filter_mode(self, filter_num):
+        if filter_num == 1:
+            if self.filter_mode == 1 or self.filter_mode == 3:
+                return True
+        else:
+            if self.filter_mode == 2 or self.filter_mode == 3:
+                return True
+        return False
+
+    def get_filter_runs(self, filter_num):
+        if filter_num == 1:
+            return f"{self.filter_1_runs_hour} hours | {self.filter_1_runs_minute} minutes"
+        else:
+            return f"{self.filter_2_runs_hour} hours | {self.filter_2_runs_minute} minutes"
+
+    def get_filter_runs_hour(self, filter_num):
+        if filter_num == 1:
+            return self.filter_1_runs_hour
+        else:
+            return self.filter_2_runs_hour
+
+    def get_filter_runs_minute(self, filter_num):
+        if filter_num == 1:
+            return self.filter_1_runs_minute
+        else:
+            return self.filter_2_runs_minute
+
+    def get_filter2_enabled(self):
+        return self.filter_2_enabled
+
+    def get_gateway_status(self):
+        return self.socket_is_connected
+
     def get_heat_mode(self):
         return self.heat_mode
 
     def get_heating(self):
         return self.heating
 
-    def get_temp_range(self):
-        return self.temp_range
+    def get_high_range_max(self):
+        return self.add_info_high_range_max
+
+    def get_high_range_min(self):
+        return self.add_info_high_range_min
+
+    def get_light(self, light_num):
+        if light_num == 1:
+            return self.get_light1()
+        else:
+            return self.get_light2()
+
+    def get_light_list(self):
+        return self.cfg_light_array
+
+    def get_light1(self):
+        return self.light1
+
+    def get_light2(self):
+        return self.light2
+
+    def get_low_range_max(self):
+        return self.add_info_low_range_max
+
+    def get_low_range_min(self):
+        return self.add_info_low_range_min
+
+    def get_macaddr(self):
+        return self.id_macaddr
+
+    def get_mister(self):
+        return self.mister
+
+    def get_mister_list(self):
+        return self.cfg_mister_array
+
+    def get_model_name(self):
+        return self.info_model_name
 
     def get_pump(self, pump_num):
         if pump_num == 1:
@@ -464,6 +766,9 @@ class spaclient:
             return self.get_pump5()
         else:
             return self.get_pump6()
+
+    def get_pump_list(self):
+        return self.cfg_pump_array
 
     def get_pump1(self):
         return self.pump1
@@ -483,248 +788,57 @@ class spaclient:
     def get_pump6(self):
         return self.pump6
 
-    def get_circ_pump(self):
-        return self.circ_pump
-
-    def get_blower(self):
-        return self.blower
-
-    def get_light(self, light_num):
-        if light_num == 1:
-            return self.get_light1()
-        else:
-            return self.get_light2()
-
-    def get_light1(self):
-        return self.light1
-
-    def get_light2(self):
-        return self.light2
-
-    def get_mister(self):
-        return self.mister
-
-    def get_aux(self, aux_num):
-        if aux_num == 1:
-            return self.get_aux1()
-        else:
-            return self.get_aux2()
-
-    def get_aux1(self):
-        return self.aux1
-
-    def get_aux2(self):
-        return self.aux2
-
     def get_set_temp(self):
         return self.set_temp
 
-    def get_low_range_min(self):
-        return self.low_range_min
-
-    def get_low_range_max(self):
-        return self.low_range_max
-
-    def get_high_range_min(self):
-        return self.high_range_min
-
-    def get_high_range_max(self):
-        return self.high_range_max
-
-    def get_pump_list(self):
-        return self.pump_array
-
-    def get_light_list(self):
-        return self.light_array
-
-    def get_circ_pump_list(self):
-        return self.circ_pump_array
-
-    def get_blower_list(self):
-        return self.blower_array
-
-    def get_mister_list(self):
-        return self.mister_array
-
-    def get_aux_list(self):
-        return self.aux_array
-
-    def get_model_name(self):
-        return self.model_name
-
     def get_ssid(self):
-        return self.ssid
+        return self.info_ssid
 
-    def get_macaddr(self):
-        return self.macaddr
+    def get_temp_range(self):
+        return self.temp_range
 
-    def get_gateway_status(self):
-        return self.is_connected
 
-    def get_filter_begins_hour(self, filter_num):
-        if filter_num == 1:
-            return self.filter1_begins_hour
-        else:
-            return self.filter2_begins_hour
+    async def send_additional_information_request(self):
+        self.send_message(b'\x0a\xbf\x22', b'\x04' + b'\x00' + b'\x00')
+        while self.additional_information_loaded == False:
+            self.read_msg()
 
-    def get_filter_begins_minute(self, filter_num):
-        if filter_num == 1:
-            return self.filter1_begins_minute
-        else:
-            return self.filter2_begins_minute
+    async def send_configuration_request(self):
+        self.send_message(b'\x0a\xbf\x22', b'\x00' + b'\x00' + b'\x01')
+        while self.configuration_loaded == False:
+            self.read_msg()
 
-    def get_filter_runs_hour(self, filter_num):
-        if filter_num == 1:
-            return self.filter1_runs_hour
-        else:
-            return self.filter2_runs_hour
+    async def send_fault_log_request(self):
+        self.send_message(b'\x0a\xbf\x22', b'\x20' + b'\x00' + b'\x00')
+        while self.fault_log_loaded == False:
+            self.read_msg()
 
-    def get_filter_runs_minute(self, filter_num):
-        if filter_num == 1:
-            return self.filter1_runs_minute
-        else:
-            return self.filter2_runs_minute
+    def send_filter_cycles_config(self):
+        self.send_message(b'\x0a\xbf\x23',
+            bytes([self.filter_1_begins_hour]) +
+            bytes([self.filter_1_begins_minute]) +
+            bytes([self.filter_1_runs_hour]) +
+            bytes([self.filter_1_runs_minute]) +
+            bytes([int(self.filter_2_enabled << 7) + self.filter_2_begins_hour]) +
+            bytes([self.filter_2_begins_minute]) +
+            bytes([self.filter_2_runs_hour]) +
+            bytes([self.filter_2_runs_minute])
+        )
 
-    def get_filter_begins(self, filter_num):
-        if filter_num == 1:
-            return "%02d:%02d" % (self.filter1_begins_hour, self.filter1_begins_minute)
-        else:
-            return "%02d:%02d" % (self.filter2_begins_hour, self.filter2_begins_minute)
+    async def send_filter_cycles_request(self):
+        self.send_message(b'\x0a\xbf\x22', b'\x01' + b'\x00' + b'\x00')
+        while self.filter_cycles_loaded == False:
+            self.read_msg()
 
-    def get_filter_runs(self, filter_num):
-        if filter_num == 1:
-            return f"{self.filter1_runs_hour} hours | {self.filter1_runs_minute} minutes"
-        else:
-            return f"{self.filter2_runs_hour} hours | {self.filter2_runs_minute} minutes"
+    async def send_gfci_test_request(self):
+        self.send_message(b'\x0a\xbf\x22', b'\x80' + b'\x00' + b'\x00')
+        while self.gfci_test_loaded == False:
+            self.read_msg()
 
-    def get_filter_ends(self, filter_num):
-        if filter_num == 1:
-            if self.filter1_begins_hour + self.filter1_runs_hour >= 24:
-                return "%02d:%02d" % (self.filter1_begins_hour + self.filter1_runs_hour - 24, self.filter1_begins_minute + self.filter1_runs_minute)
-            return "%02d:%02d" % (self.filter1_begins_hour + self.filter1_runs_hour, self.filter1_begins_minute + self.filter1_runs_minute)
-        else:
-            if self.filter2_begins_hour + self.filter2_runs_hour >= 24:
-                return "%02d:%02d" % (self.filter2_begins_hour + self.filter2_runs_hour - 24, self.filter2_begins_minute + self.filter2_runs_minute)
-            return "%02d:%02d" % (self.filter2_begins_hour + self.filter2_runs_hour, self.filter2_begins_minute + self.filter2_runs_minute)
-
-    def get_filter_mode(self, filter_num):
-        if filter_num == 1:
-            if self.filter_mode == 1 or self.filter_mode == 3:
-                return True
-        else:
-            if self.filter_mode == 2 or self.filter_mode == 3:
-                return True
-        return False
-
-    def get_filter2_enabled(self):
-        return self.filter2_enabled
-
-    def compute_checksum(self, length, payload):
-        crc = 0xb5
-        for cur in range(length):
-            for i in range(8):
-                bit = crc & 0x80
-                crc = ((crc << 1) & 0xff) | ((payload[cur] >> (7 - i)) & 0x01)
-                if bit:
-                    crc = crc ^ 0x07
-            crc &= 0xff
-        for i in range(8):
-            bit = crc & 0x80
-            crc = (crc << 1) & 0xff
-            if bit:
-                crc ^= 0x07
-        return crc ^ 0x02
-
-    def read_msg(self):
-        self.l.acquire()
-
-        try:
-            len_chunk = self.s.recv(2)
-        except (socket.timeout, socket.error) as e:
-            #_LOGGER.error("self.s.recv(2) error = %s", e) #Validation point
-            self.is_connected = False
-            self.l.release()
-            self.s.close()
-            self.s = None
-            return True
-
-        if len_chunk == b'~' or len_chunk == b'' or len(len_chunk) == 0:
-            self.l.release()
-            return True
-
-        length = len_chunk[1]
-
-        if int(length) == 0:
-            self.l.release()
-            return True
-
-        try:
-            chunk = self.s.recv(length)
-        except (socket.timeout, socket.error) as e:
-            #_LOGGER.error("self.s.recv(length) error = %s", e) #Validation point
-            self.is_connected = False
-            self.l.release()
-            self.s.close()
-            self.s = None
-            return True
-
-        self.l.release()
-
-        if chunk != self.status_chunk_array:
-            if chunk[0:3] == b'\xff\xaf\x13' and ((self.module_identification_loaded and self.configuration_loaded and self.information_loaded and self.additional_information_loaded) or (self.is_connected == False)):
-                #_LOGGER.info("Status update = %s", chunk[3:]) #Validation point
-                self.parse_status_update(chunk[3:])
-                self.status_chunk_array = chunk
-                self.is_connected = True
-                return True
-
-            if chunk[0:3] == b'\x0a\xbf\x23':
-                #_LOGGER.info("Filter cycles response = %s", chunk[3:]) #Validation point
-                self.parse_filter_cycles_response(chunk[3:])
-                return True
-
-            if chunk[0:3] == b'\x0a\xbf\x24' and self.information_loaded != True:
-                #_LOGGER.info("Information response = %s", chunk[3:]) #Validation point
-                self.parse_information_response(chunk[3:])
-                return True
-
-            if chunk[0:3] == b'\x0a\xbf\x25' and self.additional_information_loaded != True:
-                #_LOGGER.info("Additional information response = %s", chunk[3:]) #Validation point
-                self.parse_additional_information_response(chunk[3:])
-                return True
-
-            if chunk[0:3] == b'\x0a\xbf\x26':
-                #_LOGGER.info("Preferences response = %s", chunk[3:]) #Validation point
-                self.parse_preferences_response(chunk[3:])
-                return True
-
-            if chunk[0:3] == b'\x0a\xbf\x28':
-                #_LOGGER.info("Fault log response = %s", chunk[3:]) #Validation point
-                self.parse_fault_log_response(chunk[3:])
-                return True
-
-            if chunk[0:3] == b'\x0a\xbf\x2b':
-                #_LOGGER.info("GFCI test response = %s", chunk[3:]) #Validation point
-                self.parse_gfci_test_response(chunk[3:])
-                return True
-
-            if chunk[0:3] == b'\x0a\xbf\x2e' and self.configuration_loaded != True:
-                #_LOGGER.info("Configuration response = %s", chunk[3:]) #Validation point
-                self.parse_configuration_response(chunk[3:])
-                return True
-
-            if chunk[0:3] == b'\x0a\xbf\x94' and self.module_identification_loaded != True:
-                #_LOGGER.info("Module identification response = %s", chunk[3:]) #Validation point
-                self.parse_module_identification_response(chunk[3:])
-                return True
-
-        return True
-
-    async def read_all_msg(self):
-        while True:
-            if self.s is not None:
-                self.read_msg()
-            await asyncio.sleep(.1)
+    async def send_information_request(self):
+        self.send_message(b'\x0a\xbf\x22', b'\x02' + b'\x00' + b'\x00')
+        while self.information_loaded == False:
+            self.read_msg()
 
     def send_message(self, type, payload):
         length = 5 + len(payload)
@@ -734,14 +848,14 @@ class spaclient:
 
         try:
             #_LOGGER.info("send_message : %s", message) #Validation point
-            self.s.send(message)
+            self.socket_s.send(message)
             return True
         except (socket.timeout, socket.error) as e:
-            #_LOGGER.error("self.s.send(message) error = %s", e) #Validation point
-            self.is_connected = False
-            self.l.release()
-            self.s.close()
-            self.s = None
+            #_LOGGER.error("self.socket_s.send(message) error = %s", e) #Validation point
+            self.socket_is_connected = False
+            self.socket_l.release()
+            self.socket_s.close()
+            self.socket_s = None
             return True
 
     async def send_module_identification_request(self):
@@ -749,19 +863,34 @@ class spaclient:
         while self.module_identification_loaded == False:
             self.read_msg()
 
-    async def keep_alive_call(self):
-        while True:
-            if self.s is None:
-                await self.get_socket()
-            else:
-                self.send_message(b'\x0a\xbf\x04', bytes())
-            await asyncio.sleep(30)
+    async def send_preferences_request(self):
+        self.send_message(b'\x0a\xbf\x22', b'\x08' + b'\x00' + b'\x00')
+        while self.preferences_loaded == False:
+            self.read_msg()
 
     def send_toggle_message(self, item):
         self.send_message(b'\x0a\xbf\x11', bytes([item]) + b'\x00')
 
-    async def set_temperature(self, temp):
-        self.send_message(b'\x0a\xbf\x20', bytes([int(temp)]))
+
+    def set_aux(self, aux_num, value):
+        aux_val = self.aux1
+        aux_code = 0x16
+        if aux_num == 2:
+            aux_val = self.aux2
+            aux_code = 0x17
+        if aux_val == value:
+            return
+        self.send_toggle_message(aux_code)
+        if aux_num == 1:
+            self.aux1 = value
+        if aux_num == 2:
+            self.aux2 = value
+
+    def set_blower(self, value):
+        if self.blower == value:
+            return
+        self.send_toggle_message(0x0c)
+        self.blower = value
 
     async def set_current_time(self):
         now = dt_util.utcnow()
@@ -771,49 +900,59 @@ class spaclient:
         else:
             self.send_message(b'\x0a\xbf\x21', bytes([now.hour]) + bytes([now.minute]))
 
-    async def send_configuration_request(self):
-        self.send_message(b'\x0a\xbf\x22', b'\x00' + b'\x00' + b'\x01')
-        while self.configuration_loaded == False:
-            self.read_msg()
+    def set_filter_cycle_begins_time(self, filter_num, value):
+        if filter_num == 1:
+            self.filter_1_begins_hour = value.hour
+            self.filter_1_begins_minute = value.minute
+        if filter_num == 2:
+            self.filter_2_begins_hour = value.hour
+            self.filter_2_begins_minute = value.minute
+        self.send_filter_cycles_config()
 
-    async def send_filter_cycles_request(self):
-        self.send_message(b'\x0a\xbf\x22', b'\x01' + b'\x00' + b'\x00')
-        while self.filter_cycles_loaded == False:
-            self.read_msg()
+    def set_filter_cycle_runs_time(self, filter_num, value):
+        if filter_num == 1:
+            self.filter_1_runs_hour = value.hour
+            self.filter_1_runs_minute = value.minute
+        if filter_num == 2:
+            self.filter_2_runs_hour = value.hour
+            self.filter_2_runs_minute = value.minute
+        self.send_filter_cycles_config()
 
-    async def send_information_request(self):
-        self.send_message(b'\x0a\xbf\x22', b'\x02' + b'\x00' + b'\x00')
-        while self.information_loaded == False:
-            self.read_msg()
+    def set_filter2_enabled(self, value):
+        self.filter_2_enabled = value
+        self.send_filter_cycles_config()
 
-    async def send_additional_information_request(self):
-        self.send_message(b'\x0a\xbf\x22', b'\x04' + b'\x00' + b'\x00')
-        while self.additional_information_loaded == False:
-            self.read_msg()
+    def set_heat_mode(self, value):
+        if self.heat_mode == value:
+            return
+        self.send_toggle_message(0x51)
+        self.heat_mode = value
 
-    def send_preferences_request(self): #Not use yet!
-        self.send_message(b'\x0a\xbf\x22', b'\x08' + b'\x00' + b'\x00')
+    def set_hold_mode(self, value):
+        if self.hold_mode == value:
+            return
+        self.send_toggle_message(0x3c)
+        self.hold_mode = value
 
-    def send_fault_log_request(self): #Not use yet!
-        self.send_message(b'\x0a\xbf\x22', b'\x20' + b'\x00' + b'\x00')
+    def set_light(self, light_num, value):
+        light_val = self.light1
+        light_code = 0x11
+        if light_num == 2:
+            light_val = self.light2
+            light_code = 0x12
+        if light_val == value:
+            return
+        self.send_toggle_message(light_code)
+        if light_num == 1:
+            self.light1 = value
+        if light_num == 2:
+            self.light2 = value
 
-    def send_gfci_test_request(self): #Not use yet!
-        self.send_message(b'\x0a\xbf\x22', b'\x80' + b'\x00' + b'\x00')
-
-    def send_filter_cycle_config(self): #Not use yet!
-        self.send_message(b'\x0a\xbf\x23',
-            bytes([self.filter1_begins_hour]) +
-            bytes([self.filter1_begins_minute]) +
-            bytes([self.filter1_runs_hour]) +
-            bytes([self.filter1_runs_minute]) +
-            bytes([int(self.filter2_enabled << 7) + self.filter2_begins_hour]) +
-            bytes([self.filter2_begins_minute]) +
-            bytes([self.filter2_runs_hour]) +
-            bytes([self.filter2_runs_minute])
-        )
-
-    def set_temperature_scale(self, temperature_scale): #Not use yet!
-        self.send_message(b'\x0a\xbf\x27', bytes([]) + bytes([]))
+    def set_mister(self, value):
+        if self.mister == value:
+            return
+        self.send_toggle_message(0x0e)
+        self.mister = value
 
     def set_pump(self, pump_num, value):
         pump_val = self.pump1
@@ -849,95 +988,28 @@ class spaclient:
         if pump_num == 6:
             self.pump6 = value
 
-    def set_blower(self, value):
-        if self.blower == value:
-            return
-        self.send_toggle_message(0x0c)
-        self.blower = value
-
-    def set_mister(self, value):
-        if self.mister == value:
-            return
-        self.send_toggle_message(0x0e)
-        self.mister = value
-
-    def set_light(self, light_num, value):
-        light_val = self.light1
-        light_code = 0x11
-        if light_num == 2:
-            light_val = self.light2
-            light_code = 0x12
-        if light_val == value:
-            return
-        self.send_toggle_message(light_code)
-        if light_num == 1:
-            self.light1 = value
-        if light_num == 2:
-            self.light2 = value
-
-    def set_aux(self, aux_num, value):
-        aux_val = self.aux1
-        aux_code = 0x16
-        if aux_num == 2:
-            aux_val = self.aux2
-            aux_code = 0x17
-        if aux_val == value:
-            return
-        self.send_toggle_message(aux_code)
-        if aux_num == 1:
-            self.aux1 = value
-        if aux_num == 2:
-            self.aux2 = value
-
-    def set_hold_mode(self, value):
-        if self.hold_mode == value:
-            return
-        self.send_toggle_message(0x3c)
-        self.hold_mode = value
-
     def set_temp_range(self, value):
         if self.temp_range == value:
             return
         self.send_toggle_message(0x50)
         self.temp_range = value
 
-    def set_heat_mode(self, value):
-        if self.heat_mode == value:
-            return
-        self.send_toggle_message(0x51)
-        self.heat_mode = value
+    async def set_temperature(self, temp):
+        self.send_message(b'\x0a\xbf\x20', bytes([int(temp)]))
 
-    def set_filter_cycle_begins_time(self, filter_num, value):
-        if filter_num == 1:
-            self.filter1_begins_hour = value.hour
-            self.filter1_begins_minute = value.minute
-        if filter_num == 2:
-            self.filter2_begins_hour = value.hour
-            self.filter2_begins_minute = value.minute
-        self.send_filter_cycle_config()
+    def set_temperature_scale(self, temperature_scale): #Not use yet!
+        self.send_message(b'\x0a\xbf\x27', bytes([]) + bytes([]))
 
-    def set_filter_cycle_runs_time(self, filter_num, value):
-        if filter_num == 1:
-            self.filter1_runs_hour = value.hour
-            self.filter1_runs_minute = value.minute
-        if filter_num == 2:
-            self.filter2_runs_hour = value.hour
-            self.filter2_runs_minute = value.minute
-        self.send_filter_cycle_config()
-
-    def set_filter2_enabled(self, value):
-        self.filter2_enabled = value
-        self.send_filter_cycle_config()
 
     def print_variables(self):
         _LOGGER.info("")
         _LOGGER.info("======================")
         _LOGGER.info("<< socket variables >>")
         _LOGGER.info("======================")
-        _LOGGER.info("self.is_connected = %s", self.is_connected)
-        _LOGGER.info("self.l       = %s", self.l)
-        _LOGGER.info("self.s       = %s", self.s)
-        _LOGGER.info("self.host_ip = %s", self.host_ip)
+        _LOGGER.info("self.socket_is_connected = %s", self.socket_is_connected)
+        _LOGGER.info("self.socket_l       = %s", self.socket_l)
+        _LOGGER.info("self.socket_s       = %s", self.socket_s)
+        _LOGGER.info("self.socket_host_ip = %s", self.socket_host_ip)
 
         _LOGGER.info("")
         _LOGGER.info("=============================")
@@ -974,58 +1046,94 @@ class spaclient:
         _LOGGER.info("<< Information variables >>")
         _LOGGER.info("===========================")
         _LOGGER.info("self.information_loaded = %s", self.information_loaded)
-        _LOGGER.info("self.model_name     = %s", self.model_name)
-        _LOGGER.info("self.cfg_sig        = %s", self.cfg_sig)
-        _LOGGER.info("self.sw_vers        = %s", self.sw_vers)
-        _LOGGER.info("self.setup          = %s", self.setup)
-        _LOGGER.info("self.ssid           = %s", self.ssid)
-        _LOGGER.info("self.heater_voltage = %s", self.heater_voltage)
-        _LOGGER.info("self.heater_type    = %s", self.heater_type)
-        _LOGGER.info("self.dip_switch     = %s", self.dip_switch)
+        _LOGGER.info("self.info_model_name     = %s", self.info_model_name)
+        _LOGGER.info("self.info_cfg_sig        = %s", self.info_cfg_sig)
+        _LOGGER.info("self.info_sw_vers        = %s", self.info_sw_vers)
+        _LOGGER.info("self.info_setup          = %s", self.info_setup)
+        _LOGGER.info("self.info_ssid           = %s", self.info_ssid)
+        _LOGGER.info("self.info_heater_voltage = %s", self.info_heater_voltage)
+        _LOGGER.info("self.info_heater_type    = %s", self.info_heater_type)
+        _LOGGER.info("self.info_dip_switch     = %s", self.info_dip_switch)
 
         _LOGGER.info("")
         _LOGGER.info("=============================")
         _LOGGER.info("<< Configuration variables >>")
         _LOGGER.info("=============================")
         _LOGGER.info("self.configuration_loaded = %s", self.configuration_loaded)
-        _LOGGER.info("self.pump_array      = %s", self.pump_array)
-        _LOGGER.info("self.light_array     = %s", self.light_array)
-        _LOGGER.info("self.circ_pump_array = %s", self.circ_pump_array)
-        _LOGGER.info("self.blower_array    = %s", self.blower_array)
-        _LOGGER.info("self.mister_array    = %s", self.mister_array)
-        _LOGGER.info("self.aux_array       = %s", self.aux_array)
+        _LOGGER.info("self.cfg_pump_array      = %s", self.cfg_pump_array)
+        _LOGGER.info("self.cfg_light_array     = %s", self.cfg_light_array)
+        _LOGGER.info("self.cfg_circ_pump_array = %s", self.cfg_circ_pump_array)
+        _LOGGER.info("self.cfg_blower_array    = %s", self.cfg_blower_array)
+        _LOGGER.info("self.cfg_mister_array    = %s", self.cfg_mister_array)
+        _LOGGER.info("self.cfg_aux_array       = %s", self.cfg_aux_array)
 
         _LOGGER.info("")
         _LOGGER.info("=====================================")
         _LOGGER.info("<< Module identification variables >>")
         _LOGGER.info("=====================================")
         _LOGGER.info("self.module_identification_loaded = %s", self.module_identification_loaded)
-        _LOGGER.info("self.macaddr         = %s", self.macaddr)
-        _LOGGER.info("self.idigi_device_id = %s", self.idigi_device_id)
+        _LOGGER.info("self.id_macaddr = %s", self.id_macaddr)
+        _LOGGER.info("self.id_mac_oui = %s", self.id_mac_oui)
+        _LOGGER.info("self.id_mac_nic = %s", self.id_mac_nic)
 
         _LOGGER.info("")
         _LOGGER.info("=============================")
         _LOGGER.info("<< Filter cycles variables >>")
         _LOGGER.info("=============================")
         _LOGGER.info("self.filter_cycles_loaded = %s", self.filter_cycles_loaded)
-        _LOGGER.info("self.filter1_begins_hour   = %s", self.filter1_begins_hour)
-        _LOGGER.info("self.filter1_begins_minute = %s", self.filter1_begins_minute)
-        _LOGGER.info("self.filter1_runs_hour     = %s", self.filter1_runs_hour)
-        _LOGGER.info("self.filter1_runs_minute   = %s", self.filter1_runs_minute)
-        _LOGGER.info("self.filter2_enabled       = %s", self.filter2_enabled)
-        _LOGGER.info("self.filter2_begins_hour   = %s", self.filter2_begins_hour)
-        _LOGGER.info("self.filter2_begins_minute = %s", self.filter2_begins_minute)
-        _LOGGER.info("self.filter2_runs_hour     = %s", self.filter2_runs_hour)
-        _LOGGER.info("self.filter2_runs_minute   = %s", self.filter2_runs_minute)
+        _LOGGER.info("self.filter_1_begins_hour   = %s", self.filter_1_begins_hour)
+        _LOGGER.info("self.filter_1_begins_minute = %s", self.filter_1_begins_minute)
+        _LOGGER.info("self.filter_1_runs_hour     = %s", self.filter_1_runs_hour)
+        _LOGGER.info("self.filter_1_runs_minute   = %s", self.filter_1_runs_minute)
+        _LOGGER.info("self.filter_2_enabled       = %s", self.filter_2_enabled)
+        _LOGGER.info("self.filter_2_begins_hour   = %s", self.filter_2_begins_hour)
+        _LOGGER.info("self.filter_2_begins_minute = %s", self.filter_2_begins_minute)
+        _LOGGER.info("self.filter_2_runs_hour     = %s", self.filter_2_runs_hour)
+        _LOGGER.info("self.filter_2_runs_minute   = %s", self.filter_2_runs_minute)
 
         _LOGGER.info("")
         _LOGGER.info("======================================")
         _LOGGER.info("<< Additional information variables >>")
         _LOGGER.info("======================================")
         _LOGGER.info("self.additional_information_loaded = %s", self.additional_information_loaded)
-        _LOGGER.info("self.low_range_min  = %s", self.low_range_min)
-        _LOGGER.info("self.low_range_max  = %s", self.low_range_max)
-        _LOGGER.info("self.high_range_min = %s", self.high_range_min)
-        _LOGGER.info("self.high_range_max = %s", self.high_range_max)
-        _LOGGER.info("self.nb_of_pumps    = %s", self.nb_of_pumps)
+        _LOGGER.info("self.add_info_low_range_min  = %s", self.add_info_low_range_min)
+        _LOGGER.info("self.add_info_low_range_max  = %s", self.add_info_low_range_max)
+        _LOGGER.info("self.add_info_high_range_min = %s", self.add_info_high_range_min)
+        _LOGGER.info("self.add_info_high_range_max = %s", self.add_info_high_range_max)
+        _LOGGER.info("self.add_info_nb_of_pumps    = %s", self.add_info_nb_of_pumps)
+
+        _LOGGER.info("")
+        _LOGGER.info("===========================")
+        _LOGGER.info("<< Preferences variables >>")
+        _LOGGER.info("===========================")
+        _LOGGER.info("self.preferences_loaded = %s", self.preferences_loaded)
+        _LOGGER.info("self.pref_reminder        = %s", self.pref_reminder)
+        _LOGGER.info("self.pref_temp_scale      = %s", self.pref_temp_scale)
+        _LOGGER.info("self.pref_clock_mode      = %s", self.pref_clock_mode)
+        _LOGGER.info("self.pref_clean_up_cycle  = %s", self.pref_clean_up_cycle)
+        _LOGGER.info("self.pref_dolphin_address = %s", self.pref_dolphin_address)
+        _LOGGER.info("self.pref_m8_ai           = %s", self.pref_m8_ai)
+
+        _LOGGER.info("")
+        _LOGGER.info("=========================")
+        _LOGGER.info("<< Fault log variables >>")
+        _LOGGER.info("=========================")
+        _LOGGER.info("self.fault_log_loaded = %s", self.fault_log_loaded)
+        _LOGGER.info("self.fault_log_total_entries = %s", self.fault_log_total_entries)
+        _LOGGER.info("self.fault_log_entry_nb      = %s", self.fault_log_entry_nb)
+        _LOGGER.info("self.fault_log_msg_code      = %s", self.fault_log_msg_code)
+        _LOGGER.info("self.fault_log_days_ago      = %s", self.fault_log_days_ago)
+        _LOGGER.info("self.fault_log_msg_hour      = %s", self.fault_log_msg_hour)
+        _LOGGER.info("self.fault_log_msg_minute    = %s", self.fault_log_msg_minute)
+        _LOGGER.info("self.fault_log_todo          = %s", self.fault_log_todo)
+        _LOGGER.info("self.fault_log_set_temp      = %s", self.fault_log_set_temp)
+        _LOGGER.info("self.fault_log_sensor_a_temp = %s", self.fault_log_sensor_a_temp)
+        _LOGGER.info("self.fault_log_sensor_b_temp = %s", self.fault_log_sensor_b_temp)
+
+        _LOGGER.info("")
+        _LOGGER.info("=========================")
+        _LOGGER.info("<< GFCI test variables >>")
+        _LOGGER.info("=========================")
+        _LOGGER.info("self.gfci_test_loaded = %s", self.gfci_test_loaded)
+        _LOGGER.info("self.gfci_test_result = %s", self.gfci_test_result)
         _LOGGER.info("")

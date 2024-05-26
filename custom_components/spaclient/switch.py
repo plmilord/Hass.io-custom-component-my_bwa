@@ -78,7 +78,7 @@ class SpaPump(SpaClientDevice, SwitchEntity):
         """Send the on command."""
         #_LOGGER.info("Pump %s status %s", self._pump_num, self._spaclient.get_pump(self._pump_num))
         #_LOGGER.info("Turning On Pump %s", self._pump_num)
-        if self._spaclient.pump_array[self._pump_num - 1] == 1:
+        if self._spaclient.cfg_pump_array[self._pump_num - 1] == 1:
             return self._spaclient.set_pump(self._pump_num, "High")
 
         self._spaclient.set_pump(self._pump_num, "Low")
