@@ -81,8 +81,7 @@ async def async_setup_entry(hass, config_entry):
     hass.loop.create_task(spa.keep_alive_call())
     hass.loop.create_task(spa.read_all_msg())
 
-    for component in SPACLIENT_COMPONENTS:
-        hass.async_create_task(hass.config_entries.async_forward_entry_setup(config_entry, component))
+    await hass.config_entries.async_forward_entry_setups(config_entry, SPACLIENT_COMPONENTS)
 
     spa.print_variables()
     return True
@@ -91,22 +90,11 @@ async def async_setup_entry(hass, config_entry):
 async def async_unload_entry(hass, config_entry) -> bool:
     """Unload a config entry."""
 
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(config_entry, component)
-                for component in SPACLIENT_COMPONENTS
-            ]
-        )
-    )
-
     hass.data[DOMAIN][config_entry.entry_id][DATA_LISTENER]:listener()
 
-    if unload_ok:
+    if unload_ok := await hass.config_entries.async_unload_platforms(config_entry, SPACLIENT_COMPONENTS):
         hass.data[DOMAIN].pop(config_entry.entry_id)
-        return True
-
-    return False
+    return unload_ok
 
 
 async def update_listener(hass, config_entry):
