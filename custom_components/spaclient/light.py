@@ -55,17 +55,14 @@ class SpaLight(SpaClientDevice, LightEntity):
     @property
     def is_on(self):
         """Return true if light is on."""
-        #_LOGGER.info("Update Light %s state", self._light_num)
         return self._spaclient.get_light(self._light_num)
 
     async def async_turn_on(self, **kwargs):
         """Instruct the light to turn on."""
-        #_LOGGER.info("Turning On Light %s", self._light_num)
         self._spaclient.set_light(self._light_num, True)
 
     async def async_turn_off(self, **kwargs):
         """Instruct the light to turn off."""
-        #_LOGGER.info("Turning Off Light %s", self._light_num)
         self._spaclient.set_light(self._light_num, False)
 
     @property

@@ -64,6 +64,7 @@ Filter Cycle 2 Begins | Time | ✓ | N/A
 Filter Cycle 2 Runs | Time | ✓ | N/A
 Filter Cycle 2 Status | Binary sensor | ✓ | Begins, Runs, Ends
 Heat Mode | Switch | ✓ | Ready, Rest, Ready in Rest
+Hold Mode | Switch | ✓ | Remaining Time
 Last Known Fault | Sensor | ✓ | N/A
 Light 1 | Light | ✓ | False, True
 Light 2 | Light | ? | False, True
@@ -75,6 +76,7 @@ Pump 4 | Switch | ? | Off, Low, High
 Pump 5 | Switch | ? | Off, Low, High
 Pump 6 | Switch | ? | Off, Low, High
 Spa Thermostat | Climate | ✓ | N/A
+Standby Mode | Switch | ✓ | N/A
 Temperature Range | Switch | ✓ | Low, High
 
 Option | Tested

@@ -22,12 +22,13 @@ class spaclient:
         self.status_chunk_array = []
 
         """ Status update variables """
-        self.hold_mode = False
-        self.priming = False
+        self.hold_mode = 0
+        self.priming = 0
         self.current_temp = None
         self.hour = 0
         self.minute = 0
         self.heat_mode = "Rest"
+        self.hold_mode_remain_time = 0
         self.temp_scale = "Fahrenheit"
         self.filter_mode = False
         self.time_scale = "24 Hr"
@@ -47,6 +48,7 @@ class spaclient:
         self.aux1 = "Off"
         self.aux2 = "Off"
         self.set_temp = 0
+        self.standby_mode = 0
 
         """ Information variables """
         self.info_model_name = "Unknown"
@@ -521,9 +523,9 @@ class spaclient:
         CS: Checksum (CRC-8 with 0x02 initial value, and 0x02 final XOR)
         ME: Message End (always 0x7e "~")
 
-                         00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26
-        MS ML MT MT MT   F0 F1 CT HH MM F2 06 TA TB F3 F4 P1 P2 F5 LF F6 16 17 18 CU ST AB 22 23 M8 25 26   CS ME
-        7E 20 FF AF 13                                                                                         7E
+                         00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
+        MS ML MT MT MT   F0 F1 CT HH MM F2 06 TA TB F3 F4 P1 P2 F5 LF F6 16 17 18 CU ST AB 22 23 M8   CS ME
+        7E 20 FF AF 13                                                                                   7E
 
         F0: 0x00 = Running
             0x01 = Initializing
@@ -572,43 +574,39 @@ class spaclient:
         AB: 0x02 = Sensor A/B Temperatures	(0 = No, 1 = Yes)
             0x04 = Timeouts	(0 = Normal, 1 = 8h)
             0x08 = Settings Locked / Test Mode: Temp Limits	(0 = No, 1 = Yes)
-        22: ?
-        23: ?
+        22: Mode of operation (0x00 = Normal Mode, 0x01 = Pump Test Mode, 0x40 = Hold Mode)
+        23: Saving states when switching between modes... For internal use in the BP controller
         M8: M8 Cycle Time (0 = OFF, 30, 60, 90, or 120 (in minutes))
-        25: ?
-        26: ?
 
         """
 
-        self.hold_mode = byte_array[0] & 0x05 == 1
-        self.priming = byte_array[1] & 0x01 == 1
+        self.hold_mode = 1 if byte_array[0] == 0x05 else 0
+        self.priming = 1 if byte_array[1] == 0x01 else 0
         self.current_temp = byte_array[2] if (byte_array[2] != 255) else None
         self.hour = byte_array[3]
         self.minute = byte_array[4]
         self.heat_mode = ("Ready", "Rest", "Ready in Rest")[byte_array[5]]
-        flag3 = byte_array[9]
-        self.temp_scale = "Fahrenheit" if (flag3 & 0x01 == 0) else "Celsius"
-        self.time_scale = "12 Hr" if (flag3 & 0x02 == 0) else "24 Hr"
-        self.filter_mode = (flag3 & 0x0c) >> 2
-        flag4 = byte_array[10]
-        self.heating = (flag4 & 0x30) >> 4
-        self.temp_range = "Low" if (flag4 & 0x04) >> 2 == 0 else "High"
+        self.hold_mode_remain_time = byte_array[7] if self.hold_mode else 0
+        self.temp_scale = "Fahrenheit" if (byte_array[9] & 0x01 == 0) else "Celsius"
+        self.time_scale = "12 Hr" if (byte_array[9] & 0x02 == 0) else "24 Hr"
+        self.filter_mode = (byte_array[9] & 0x0c) >> 2
+        self.heating = (byte_array[10] & 0x30) >> 4
+        self.temp_range = "Low" if (byte_array[10] & 0x04) >> 2 == 0 else "High"
         self.pump1 = ("Off", "Low", "High")[byte_array[11] & 0x03]
         self.pump2 = ("Off", "Low", "High")[byte_array[11] >> 2 & 0x03]
         self.pump3 = ("Off", "Low", "High")[byte_array[11] >> 4 & 0x03]
         self.pump4 = ("Off", "Low", "High")[byte_array[11] >> 6 & 0x03]
         self.pump5 = ("Off", "Low", "High")[byte_array[12] & 0x03]
         self.pump6 = ("Off", "Low", "High")[byte_array[12] >> 6 & 0x03]
-        flag5 = byte_array[13]
-        self.circ_pump = flag5 & 0x02
-        self.blower =  "Off" if (flag5 & 0x0c) >> 2 == 0 else "On"
+        self.circ_pump = byte_array[13] & 0x02
+        self.blower =  "Off" if (byte_array[13] & 0x0c) >> 2 == 0 else "On"
         self.light1 = byte_array[14] & 0x03 == 0x03
         self.light2 = byte_array[14] >> 6 & 0x03 == 0x03
-        flag6 = byte_array[15]
-        self.mister = "Off" if (flag6 & 0x01) == 0 else "On"
-        self.aux1 = flag6 & 0x08
-        self.aux2 = flag6 & 0x10
+        self.mister = "Off" if (byte_array[15] & 0x01) == 0 else "On"
+        self.aux1 = byte_array[15] & 0x08
+        self.aux2 = byte_array[15] & 0x10
         self.set_temp = byte_array[20]
+        self.standby_mode = 1 if (byte_array[22] & 0x01) == 1 else 0
 
 
     def get_aux(self, aux_num):
@@ -720,6 +718,14 @@ class spaclient:
     def get_high_range_min(self):
         return self.add_info_high_range_min
 
+    def get_hold_mode(self):
+        return self.hold_mode
+
+    def get_hold_mode_remain_time(self):
+        hours = self.hold_mode_remain_time // 60
+        minutes = self.hold_mode_remain_time % 60
+        return "%02d:%02d" % (hours, minutes)
+
     def get_light(self, light_num):
         if light_num == 1:
             return self.get_light1()
@@ -793,6 +799,9 @@ class spaclient:
 
     def get_ssid(self):
         return self.info_ssid
+
+    def get_standby_mode(self):
+        return self.standby_mode
 
     def get_temp_range(self):
         return self.temp_range
@@ -892,6 +901,12 @@ class spaclient:
         self.send_toggle_message(0x0c)
         self.blower = value
 
+    def set_clear_notification(self, value):
+        if self.clear_notification == value:
+            return
+        self.send_toggle_message(0x03)
+        self.clear_notification = value
+
     async def set_current_time(self):
         now = dt_util.utcnow()
         now = dt_util.as_local(now)
@@ -954,6 +969,12 @@ class spaclient:
         self.send_toggle_message(0x0e)
         self.mister = value
 
+    def set_normal_operation(self, value):
+        if self.normal_operation == value:
+            return
+        self.send_toggle_message(0x01)
+        self.normal_operation = value
+
     def set_pump(self, pump_num, value):
         pump_val = self.pump1
         pump_code = 0x04
@@ -988,6 +1009,9 @@ class spaclient:
         if pump_num == 6:
             self.pump6 = value
 
+    def set_standby_mode(self):
+        self.send_toggle_message(0x1d)
+
     def set_temp_range(self, value):
         if self.temp_range == value:
             return
@@ -1007,65 +1031,67 @@ class spaclient:
         _LOGGER.info("<< socket variables >>")
         _LOGGER.info("======================")
         _LOGGER.info("self.socket_is_connected = %s", self.socket_is_connected)
-        _LOGGER.info("self.socket_l       = %s", self.socket_l)
-        _LOGGER.info("self.socket_s       = %s", self.socket_s)
+        _LOGGER.info("self.socket_l = %s", self.socket_l)
+        _LOGGER.info("self.socket_s = %s", self.socket_s)
         _LOGGER.info("self.socket_host_ip = %s", self.socket_host_ip)
 
         _LOGGER.info("")
         _LOGGER.info("=============================")
         _LOGGER.info("<< Status update variables >>")
         _LOGGER.info("=============================")
-        _LOGGER.info("self.hold_mode    = %s", self.hold_mode)
-        _LOGGER.info("self.priming      = %s", self.priming)
+        _LOGGER.info("self.hold_mode= %s", self.hold_mode)
+        _LOGGER.info("self.priming = %s", self.priming)
         _LOGGER.info("self.current_temp = %s", self.current_temp)
-        _LOGGER.info("self.hour         = %s", self.hour)
-        _LOGGER.info("self.minute       = %s", self.minute)
-        _LOGGER.info("self.heat_mode    = %s", self.heat_mode)
-        _LOGGER.info("self.temp_scale   = %s", self.temp_scale)
-        _LOGGER.info("self.filter_mode  = %s", self.filter_mode)
-        _LOGGER.info("self.time_scale   = %s", self.time_scale)
-        _LOGGER.info("self.heating      = %s", self.heating)
-        _LOGGER.info("self.temp_range   = %s", self.temp_range)
-        _LOGGER.info("self.pump1        = %s", self.pump1)
-        _LOGGER.info("self.pump2        = %s", self.pump2)
-        _LOGGER.info("self.pump3        = %s", self.pump3)
-        _LOGGER.info("self.pump4        = %s", self.pump4)
-        _LOGGER.info("self.pump5        = %s", self.pump5)
-        _LOGGER.info("self.pump6        = %s", self.pump6)
-        _LOGGER.info("self.circ_pump    = %s", self.circ_pump)
-        _LOGGER.info("self.blower       = %s", self.blower)
-        _LOGGER.info("self.light1       = %s", self.light1)
-        _LOGGER.info("self.light2       = %s", self.light2)
-        _LOGGER.info("self.mister       = %s", self.mister)
-        _LOGGER.info("self.aux1         = %s", self.aux1)
-        _LOGGER.info("self.aux2         = %s", self.aux2)
-        _LOGGER.info("self.set_temp     = %s", self.set_temp)
+        _LOGGER.info("self.hour = %s", self.hour)
+        _LOGGER.info("self.minute = %s", self.minute)
+        _LOGGER.info("self.heat_mode = %s", self.heat_mode)
+        _LOGGER.info("self.hold_mode_remain_time = %s", self.hold_mode_remain_time)
+        _LOGGER.info("self.temp_scale = %s", self.temp_scale)
+        _LOGGER.info("self.filter_mode = %s", self.filter_mode)
+        _LOGGER.info("self.time_scale = %s", self.time_scale)
+        _LOGGER.info("self.heating = %s", self.heating)
+        _LOGGER.info("self.temp_range = %s", self.temp_range)
+        _LOGGER.info("self.pump1 = %s", self.pump1)
+        _LOGGER.info("self.pump2 = %s", self.pump2)
+        _LOGGER.info("self.pump3 = %s", self.pump3)
+        _LOGGER.info("self.pump4 = %s", self.pump4)
+        _LOGGER.info("self.pump5 = %s", self.pump5)
+        _LOGGER.info("self.pump6 = %s", self.pump6)
+        _LOGGER.info("self.circ_pump = %s", self.circ_pump)
+        _LOGGER.info("self.blower = %s", self.blower)
+        _LOGGER.info("self.light1 = %s", self.light1)
+        _LOGGER.info("self.light2 = %s", self.light2)
+        _LOGGER.info("self.mister = %s", self.mister)
+        _LOGGER.info("self.aux1 = %s", self.aux1)
+        _LOGGER.info("self.aux2 = %s", self.aux2)
+        _LOGGER.info("self.set_temp = %s", self.set_temp)
+        _LOGGER.info("self.standby_mode = %s", self.standby_mode)
 
         _LOGGER.info("")
         _LOGGER.info("===========================")
         _LOGGER.info("<< Information variables >>")
         _LOGGER.info("===========================")
         _LOGGER.info("self.information_loaded = %s", self.information_loaded)
-        _LOGGER.info("self.info_model_name     = %s", self.info_model_name)
-        _LOGGER.info("self.info_cfg_sig        = %s", self.info_cfg_sig)
-        _LOGGER.info("self.info_sw_vers        = %s", self.info_sw_vers)
-        _LOGGER.info("self.info_setup          = %s", self.info_setup)
-        _LOGGER.info("self.info_ssid           = %s", self.info_ssid)
+        _LOGGER.info("self.info_model_name = %s", self.info_model_name)
+        _LOGGER.info("self.info_cfg_sig = %s", self.info_cfg_sig)
+        _LOGGER.info("self.info_sw_vers = %s", self.info_sw_vers)
+        _LOGGER.info("self.info_setup = %s", self.info_setup)
+        _LOGGER.info("self.info_ssid = %s", self.info_ssid)
         _LOGGER.info("self.info_heater_voltage = %s", self.info_heater_voltage)
-        _LOGGER.info("self.info_heater_type    = %s", self.info_heater_type)
-        _LOGGER.info("self.info_dip_switch     = %s", self.info_dip_switch)
+        _LOGGER.info("self.info_heater_type = %s", self.info_heater_type)
+        _LOGGER.info("self.info_dip_switch = %s", self.info_dip_switch)
 
         _LOGGER.info("")
         _LOGGER.info("=============================")
         _LOGGER.info("<< Configuration variables >>")
         _LOGGER.info("=============================")
         _LOGGER.info("self.configuration_loaded = %s", self.configuration_loaded)
-        _LOGGER.info("self.cfg_pump_array      = %s", self.cfg_pump_array)
-        _LOGGER.info("self.cfg_light_array     = %s", self.cfg_light_array)
+        _LOGGER.info("self.cfg_pump_array = %s", self.cfg_pump_array)
+        _LOGGER.info("self.cfg_light_array = %s", self.cfg_light_array)
         _LOGGER.info("self.cfg_circ_pump_array = %s", self.cfg_circ_pump_array)
-        _LOGGER.info("self.cfg_blower_array    = %s", self.cfg_blower_array)
-        _LOGGER.info("self.cfg_mister_array    = %s", self.cfg_mister_array)
-        _LOGGER.info("self.cfg_aux_array       = %s", self.cfg_aux_array)
+        _LOGGER.info("self.cfg_blower_array = %s", self.cfg_blower_array)
+        _LOGGER.info("self.cfg_mister_array = %s", self.cfg_mister_array)
+        _LOGGER.info("self.cfg_aux_array = %s", self.cfg_aux_array)
 
         _LOGGER.info("")
         _LOGGER.info("=====================================")
@@ -1081,38 +1107,38 @@ class spaclient:
         _LOGGER.info("<< Filter cycles variables >>")
         _LOGGER.info("=============================")
         _LOGGER.info("self.filter_cycles_loaded = %s", self.filter_cycles_loaded)
-        _LOGGER.info("self.filter_1_begins_hour   = %s", self.filter_1_begins_hour)
+        _LOGGER.info("self.filter_1_begins_hour = %s", self.filter_1_begins_hour)
         _LOGGER.info("self.filter_1_begins_minute = %s", self.filter_1_begins_minute)
-        _LOGGER.info("self.filter_1_runs_hour     = %s", self.filter_1_runs_hour)
-        _LOGGER.info("self.filter_1_runs_minute   = %s", self.filter_1_runs_minute)
-        _LOGGER.info("self.filter_2_enabled       = %s", self.filter_2_enabled)
-        _LOGGER.info("self.filter_2_begins_hour   = %s", self.filter_2_begins_hour)
+        _LOGGER.info("self.filter_1_runs_hour = %s", self.filter_1_runs_hour)
+        _LOGGER.info("self.filter_1_runs_minute = %s", self.filter_1_runs_minute)
+        _LOGGER.info("self.filter_2_enabled = %s", self.filter_2_enabled)
+        _LOGGER.info("self.filter_2_begins_hour = %s", self.filter_2_begins_hour)
         _LOGGER.info("self.filter_2_begins_minute = %s", self.filter_2_begins_minute)
-        _LOGGER.info("self.filter_2_runs_hour     = %s", self.filter_2_runs_hour)
-        _LOGGER.info("self.filter_2_runs_minute   = %s", self.filter_2_runs_minute)
+        _LOGGER.info("self.filter_2_runs_hour = %s", self.filter_2_runs_hour)
+        _LOGGER.info("self.filter_2_runs_minute = %s", self.filter_2_runs_minute)
 
         _LOGGER.info("")
         _LOGGER.info("======================================")
         _LOGGER.info("<< Additional information variables >>")
         _LOGGER.info("======================================")
         _LOGGER.info("self.additional_information_loaded = %s", self.additional_information_loaded)
-        _LOGGER.info("self.add_info_low_range_min  = %s", self.add_info_low_range_min)
-        _LOGGER.info("self.add_info_low_range_max  = %s", self.add_info_low_range_max)
+        _LOGGER.info("self.add_info_low_range_min = %s", self.add_info_low_range_min)
+        _LOGGER.info("self.add_info_low_range_max = %s", self.add_info_low_range_max)
         _LOGGER.info("self.add_info_high_range_min = %s", self.add_info_high_range_min)
         _LOGGER.info("self.add_info_high_range_max = %s", self.add_info_high_range_max)
-        _LOGGER.info("self.add_info_nb_of_pumps    = %s", self.add_info_nb_of_pumps)
+        _LOGGER.info("self.add_info_nb_of_pumps = %s", self.add_info_nb_of_pumps)
 
         _LOGGER.info("")
         _LOGGER.info("===========================")
         _LOGGER.info("<< Preferences variables >>")
         _LOGGER.info("===========================")
         _LOGGER.info("self.preferences_loaded = %s", self.preferences_loaded)
-        _LOGGER.info("self.pref_reminder        = %s", self.pref_reminder)
-        _LOGGER.info("self.pref_temp_scale      = %s", self.pref_temp_scale)
-        _LOGGER.info("self.pref_clock_mode      = %s", self.pref_clock_mode)
-        _LOGGER.info("self.pref_clean_up_cycle  = %s", self.pref_clean_up_cycle)
+        _LOGGER.info("self.pref_reminder = %s", self.pref_reminder)
+        _LOGGER.info("self.pref_temp_scale = %s", self.pref_temp_scale)
+        _LOGGER.info("self.pref_clock_mode = %s", self.pref_clock_mode)
+        _LOGGER.info("self.pref_clean_up_cycle = %s", self.pref_clean_up_cycle)
         _LOGGER.info("self.pref_dolphin_address = %s", self.pref_dolphin_address)
-        _LOGGER.info("self.pref_m8_ai           = %s", self.pref_m8_ai)
+        _LOGGER.info("self.pref_m8_ai = %s", self.pref_m8_ai)
 
         _LOGGER.info("")
         _LOGGER.info("=========================")
@@ -1120,13 +1146,13 @@ class spaclient:
         _LOGGER.info("=========================")
         _LOGGER.info("self.fault_log_loaded = %s", self.fault_log_loaded)
         _LOGGER.info("self.fault_log_total_entries = %s", self.fault_log_total_entries)
-        _LOGGER.info("self.fault_log_entry_nb      = %s", self.fault_log_entry_nb)
-        _LOGGER.info("self.fault_log_msg_code      = %s", self.fault_log_msg_code)
-        _LOGGER.info("self.fault_log_days_ago      = %s", self.fault_log_days_ago)
-        _LOGGER.info("self.fault_log_msg_hour      = %s", self.fault_log_msg_hour)
-        _LOGGER.info("self.fault_log_msg_minute    = %s", self.fault_log_msg_minute)
-        _LOGGER.info("self.fault_log_todo          = %s", self.fault_log_todo)
-        _LOGGER.info("self.fault_log_set_temp      = %s", self.fault_log_set_temp)
+        _LOGGER.info("self.fault_log_entry_nb = %s", self.fault_log_entry_nb)
+        _LOGGER.info("self.fault_log_msg_code = %s", self.fault_log_msg_code)
+        _LOGGER.info("self.fault_log_days_ago = %s", self.fault_log_days_ago)
+        _LOGGER.info("self.fault_log_msg_hour = %s", self.fault_log_msg_hour)
+        _LOGGER.info("self.fault_log_msg_minute = %s", self.fault_log_msg_minute)
+        _LOGGER.info("self.fault_log_todo = %s", self.fault_log_todo)
+        _LOGGER.info("self.fault_log_set_temp = %s", self.fault_log_set_temp)
         _LOGGER.info("self.fault_log_sensor_a_temp = %s", self.fault_log_sensor_a_temp)
         _LOGGER.info("self.fault_log_sensor_b_temp = %s", self.fault_log_sensor_b_temp)
 
